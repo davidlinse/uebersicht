@@ -19,4 +19,6 @@ html {
 .widget {
   position: absolute;
   -webkit-font-smoothing: subpixel-antialiased;
+  user-select: none;
+  cursor: pointer;
 }

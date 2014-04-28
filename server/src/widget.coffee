@@ -48,7 +48,7 @@ module.exports = (implementation) ->
   api.destroy = ->
     api.stop()
     return unless el?
-    el.parentNode.removeChild(el)
+    el.parentNode?.removeChild(el)
     el = null
     contentEl = null
 
@@ -67,13 +67,15 @@ module.exports = (implementation) ->
   api.exec = (options, callback) ->
     exec implementation.command, options, callback
 
-  api.domEl = -> el
-
   # used by the backend to send a serialized version of the
   # widget to the client. JSON wont't work here, because we
   # need functions as well
   api.serialize = ->
     toSource implementation
+
+  api.setFrame = (frame) ->
+    for attr in ['top', 'right', 'bottom', 'left']
+      contentEl.style[attr] = frame[attr] + 'px'
 
   redraw = (output, error) ->
     if error

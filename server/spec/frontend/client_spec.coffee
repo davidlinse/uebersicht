@@ -4,15 +4,13 @@ describe 'client', ->
   clock     = null
 
   beforeEach ->
-    clock     = sinon.useFakeTimers()
-    contentEl = $('<div class="content"></div>')
-    $(document.body).append contentEl
+    clock  = sinon.useFakeTimers()
     server = sinon.fakeServer.create()
 
   afterEach ->
     server.restore()
-    contentEl.remove()
     clock.restore()
+    window.reset()
 
   # This is an integration test esentially. TODO: see if this can be broken up
   it 'should manage widgets on the frontend', ->
@@ -23,6 +21,9 @@ describe 'client', ->
 
     require '../../client.coffee'
     window.onload()
+
+    contentEl = $('.content')
+    expect(contentEl.length).toBe 1
 
     expect(server.requests[0].url).toEqual '/widgets'
     server.requests[0].respond(200, { "Content-Type": "application/json" }, JSON.stringify widgets)

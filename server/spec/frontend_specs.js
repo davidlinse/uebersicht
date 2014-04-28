@@ -1,26 +1,48 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var Widget, contentEl, getChanges, getWidgets, init, initWidget, initWidgets, widgets;
+var Positioning, Widget, contentEl, destroy, getChanges, getWidgets, init, initWidget, initWidgets, positioner, widgets;
 
 Widget = require('./src/widget.coffee');
+
+Positioning = require('./src/widget_positioning_engine.coffee');
 
 widgets = {};
 
 contentEl = null;
 
+positioner = null;
+
 init = function() {
-  widgets = {};
-  contentEl = document.getElementsByClassName('content')[0];
-  contentEl.innerHTML = '';
+  contentEl = document.createElement('div');
+  contentEl.className = 'content';
+  document.body.appendChild(contentEl);
+  positioner = Positioning({
+    get: function(id) {
+      return widgets[id];
+    }
+  });
   return getWidgets(function(err, widgetSettings) {
     if (err != null) {
       console.log(err);
-    }
-    if (err != null) {
+      destroy();
       return setTimeout(init, 10000);
+    } else {
+      initWidgets(widgetSettings);
+      return setTimeout(getChanges);
     }
-    initWidgets(widgetSettings);
-    return setTimeout(getChanges);
   });
+};
+
+destroy = function() {
+  var id, widget;
+  for (id in widgets) {
+    widget = widgets[id];
+    widget.destroy();
+  }
+  widgets = {};
+  if (contentEl != null) {
+    contentEl.innerHTML = '';
+  }
+  return positioner.destroy();
 };
 
 getWidgets = function(callback) {
@@ -38,6 +60,7 @@ getChanges = function() {
     }
     return getChanges();
   }).fail(function() {
+    destroy();
     return setTimeout(init, 10000);
   });
 };
@@ -63,13 +86,16 @@ initWidgets = function(widgetSettings) {
 
 initWidget = function(widget) {
   contentEl.appendChild(widget.create());
+  positioner.positonWidget(widget);
   return widget.start();
 };
+
+window.reset = destroy;
 
 window.onload = init;
 
 
-},{"./src/widget.coffee":6}],2:[function(require,module,exports){
+},{"./src/widget.coffee":9,"./src/widget_positioning_engine.coffee":10}],2:[function(require,module,exports){
 
 },{}],3:[function(require,module,exports){
 /* toSource by Marcello Bastea-Forte - zlib license */
@@ -126,14 +152,12 @@ describe('client', function() {
   clock = null;
   beforeEach(function() {
     clock = sinon.useFakeTimers();
-    contentEl = $('<div class="content"></div>');
-    $(document.body).append(contentEl);
     return server = sinon.fakeServer.create();
   });
   afterEach(function() {
     server.restore();
-    contentEl.remove();
-    return clock.restore();
+    clock.restore();
+    return window.reset();
   });
   return it('should manage widgets on the frontend', function() {
     var lastRequest, req, requestedUrls, widgets;
@@ -153,6 +177,8 @@ describe('client', function() {
     };
     require('../../client.coffee');
     window.onload();
+    contentEl = $('.content');
+    expect(contentEl.length).toBe(1);
     expect(server.requests[0].url).toEqual('/widgets');
     server.requests[0].respond(200, {
       "Content-Type": "application/json"
@@ -185,6 +211,136 @@ describe('client', function() {
 
 
 },{"../../client.coffee":1}],5:[function(require,module,exports){
+var DragHandler;
+
+DragHandler = require('../../src/drag_handler.coffee');
+
+describe('drag handler', function() {
+  var domEl, getPosition;
+  domEl = null;
+  getPosition = function() {
+    return domEl.offset();
+  };
+  beforeEach(function() {
+    domEl = $("<div>");
+    domEl.css({
+      position: 'absolute',
+      top: 0,
+      left: 0
+    });
+    $(document.body).html(domEl);
+    return $(document.body).css({
+      padding: 0,
+      margin: 0
+    });
+  });
+  afterEach(function() {
+    domEl.remove();
+    return $(document.body).css({
+      padding: '',
+      margin: ''
+    });
+  });
+  return it('should call the change handler with frame updates', function() {
+    var changeHandler, currentFrame, position;
+    currentFrame = null;
+    changeHandler = function(frame) {
+      return currentFrame = frame;
+    };
+    DragHandler({
+      pageX: 10,
+      pageY: 20
+    }, domEl[0], changeHandler);
+    position = getPosition();
+    expect(position.left).toBe(0);
+    expect(position.top).toBe(0);
+    $(document).simulate('mousemove', {
+      clientX: 20,
+      clientY: 25
+    });
+    expect(currentFrame.left).toBe(10);
+    expect(currentFrame.top).toBe(5);
+    $(document).simulate('mousemove', {
+      clientX: 20,
+      clientY: 20
+    });
+    expect(currentFrame.left).toBe(10);
+    expect(currentFrame.top).toBe(0);
+    $(document).simulate('mouseup', {
+      clientX: 50,
+      clientY: 30
+    });
+    expect(currentFrame.left).toBe(40);
+    return expect(currentFrame.top).toBe(10);
+  });
+});
+
+
+},{"../../src/drag_handler.coffee":8}],6:[function(require,module,exports){
+var Engine;
+
+Engine = require('../../src/widget_positioning_engine.coffee');
+
+describe('widget positioning engine', function() {
+  return describe('dragging a widget', function() {
+    var domEl, engine, getFrame, widget, widgets;
+    engine = null;
+    domEl = null;
+    widget = null;
+    widgets = {
+      get: function() {
+        return widget;
+      }
+    };
+    beforeEach(function() {
+      engine = Engine(widgets);
+      domEl = $("<div class='widget' id='foo'></div>");
+      widget = {
+        id: 'foo',
+        setFrame: function(frame) {
+          return domEl.css(frame);
+        }
+      };
+      domEl.css({
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100px',
+        height: '100px'
+      });
+      $(document.body).css({
+        padding: 0,
+        margin: 0
+      });
+      return $(document.body).html(domEl);
+    });
+    afterEach(function() {
+      engine.destroy();
+      domEl.remove();
+      return $(document.body).css({
+        padding: '',
+        margin: ''
+      });
+    });
+    getFrame = function() {
+      var _ref, _ref1;
+      return (_ref = JSON.parse((_ref1 = localStorage.getItem('foo')) != null ? _ref1 : '{}').frame) != null ? _ref : {};
+    };
+    return it('should store the widget position in local storage', function() {
+      var currentFrame;
+      $(domEl).simulate('drag', {
+        dx: 10,
+        dy: 5
+      });
+      currentFrame = getFrame();
+      expect(currentFrame.left).toBe(10);
+      return expect(currentFrame.top).toBe(5);
+    });
+  });
+});
+
+
+},{"../../src/widget_positioning_engine.coffee":10}],7:[function(require,module,exports){
 var Widget;
 
 Widget = require('../../src/widget.coffee');
@@ -437,7 +593,41 @@ describe('widget', function() {
 });
 
 
-},{"../../src/widget.coffee":6}],6:[function(require,module,exports){
+},{"../../src/widget.coffee":9}],8:[function(require,module,exports){
+module.exports = function(event, domEl, changeHandler) {
+  var currentFrame, end, k, prevPosition, update, v, _ref;
+  prevPosition = {
+    x: event.pageX,
+    y: event.pageY
+  };
+  currentFrame = {};
+  _ref = domEl.getBoundingClientRect();
+  for (k in _ref) {
+    v = _ref[k];
+    currentFrame[k] = v;
+  }
+  update = function(e) {
+    var dx, dy, _ref1;
+    _ref1 = [e.pageX - prevPosition.x, e.pageY - prevPosition.y], dx = _ref1[0], dy = _ref1[1];
+    prevPosition = {
+      x: e.pageX,
+      y: e.pageY
+    };
+    currentFrame.left += dx;
+    currentFrame.top += dy;
+    return changeHandler(currentFrame);
+  };
+  end = function(e) {
+    update(e);
+    document.removeEventListener('mousemove', update);
+    return document.removeEventListener('mouseup', end);
+  };
+  document.addEventListener('mousemove', update);
+  return document.addEventListener('mouseup', end);
+};
+
+
+},{}],9:[function(require,module,exports){
 var exec, nib, stylus, toSource;
 
 exec = require('child_process').exec;
@@ -486,11 +676,14 @@ module.exports = function(implementation) {
     return el;
   };
   api.destroy = function() {
+    var _ref;
     api.stop();
     if (el == null) {
       return;
     }
-    el.parentNode.removeChild(el);
+    if ((_ref = el.parentNode) != null) {
+      _ref.removeChild(el);
+    }
     el = null;
     return contentEl = null;
   };
@@ -511,11 +704,18 @@ module.exports = function(implementation) {
   api.exec = function(options, callback) {
     return exec(implementation.command, options, callback);
   };
-  api.domEl = function() {
-    return el;
-  };
   api.serialize = function() {
     return toSource(implementation);
+  };
+  api.setFrame = function(frame) {
+    var attr, _i, _len, _ref, _results;
+    _ref = ['top', 'right', 'bottom', 'left'];
+    _results = [];
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      attr = _ref[_i];
+      _results.push(contentEl.style[attr] = frame[attr] + 'px');
+    }
+    return _results;
   };
   redraw = function(output, error) {
     var e;
@@ -542,9 +742,6 @@ module.exports = function(implementation) {
     }
   };
   refresh = function() {
-    if (window.huh) {
-      console.debug(setTimeout);
-    }
     return $.get('/widgets/' + api.id).done(function(response) {
       if (started) {
         return redraw(response);
@@ -556,9 +753,6 @@ module.exports = function(implementation) {
     }).always(function() {
       if (!started) {
         return;
-      }
-      if (window.huh) {
-        console.debug('yay');
       }
       return timer = setTimeout(refresh, api.refreshFrequency);
     });
@@ -594,4 +788,67 @@ module.exports = function(implementation) {
 };
 
 
-},{"child_process":2,"nib":2,"stylus":2,"tosource":3}]},{},[4,5])
+},{"child_process":2,"nib":2,"stylus":2,"tosource":3}],10:[function(require,module,exports){
+var DragHandler;
+
+DragHandler = require('./drag_handler.coffee');
+
+module.exports = function(widgets) {
+  var api, getLocalSettings, getWidget, getWidgetFrame, init, startPositioning, storeLocalSettings, storeWidgetFrame;
+  api = {};
+  init = function() {
+    document.addEventListener('mousedown', startPositioning);
+    return api;
+  };
+  api.destroy = function() {
+    return document.removeEventListener('mousedown', startPositioning);
+  };
+  api.positonWidget = function(widget) {
+    var frame;
+    frame = getWidgetFrame(widget);
+    if (!frame) {
+      return;
+    }
+    return widget.setFrame(frame);
+  };
+  startPositioning = function(e) {
+    var el, widget;
+    if ((el = getWidget(e.target)) == null) {
+      return;
+    }
+    widget = widgets.get(el.id);
+    return DragHandler(e, el, function(frame) {
+      storeWidgetFrame(widget, frame);
+      return widget.setFrame(frame);
+    });
+  };
+  getWidget = function(element) {
+    if (element === document.body || element === document) {
+      return;
+    }
+    if (element.className === 'widget' && element.id) {
+      return element;
+    } else {
+      return getWidget(element.parentElement);
+    }
+  };
+  getWidgetFrame = function(widget) {
+    return getLocalSettings(widget).frame;
+  };
+  storeWidgetFrame = function(widget, frame) {
+    var settings;
+    settings = getLocalSettings(widget);
+    settings.frame = frame;
+    return storeLocalSettings(widget, settings);
+  };
+  getLocalSettings = function(widget) {
+    return JSON.parse(localStorage.getItem(widget.id) || '{}');
+  };
+  storeLocalSettings = function(widget, settings) {
+    return localStorage.setItem(widget.id, JSON.stringify(settings));
+  };
+  return init();
+};
+
+
+},{"./drag_handler.coffee":8}]},{},[4,5,6,7])

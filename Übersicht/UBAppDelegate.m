@@ -14,6 +14,7 @@
 #import "UBWindow.h"
 #import "UBPreferencesController.m"
 #import "WebInspector.h"
+#import "WebPreferences.h"
 
 @implementation UBAppDelegate {
     NSStatusItem* statusBarItem;
@@ -30,6 +31,7 @@
 {
     [mainView setDrawsBackground:NO];
     [mainView setMaintainsBackForwardList:NO];
+    [self enableLocalStorage:mainView];
     
     statusBarItem = [self addStatusItemToMenu: statusBarMenu];
     preferences   = [[UBPreferencesController alloc] initWithWindowNibName:@"UBPreferencesController"];
@@ -192,6 +194,15 @@
         [mainView.window setLevel:kCGDesktopWindowLevel];
     }
 
+}
+
+- (void)enableLocalStorage:(WebView*)webView
+{
+    WebPreferences* prefs = [WebPreferences standardPreferences];
+    NSArray* paths = NSSearchPathForDirectoriesInDomains( NSLibraryDirectory, NSUserDomainMask, YES );
+    [prefs _setLocalStorageDatabasePath: paths[0]];
+    [prefs setLocalStorageEnabled:YES];
+    [webView setPreferences:prefs];
 }
 
 @end

@@ -1132,7 +1132,7 @@ module.exports = function(port, widgetPath) {
 };
 
 
-},{"./changes_server.coffee":9,"./widget_command_server.coffee":12,"./widget_directory.coffee":13,"./widgets_server.coffee":15,"connect":false,"path":false}],9:[function(require,module,exports){
+},{"./changes_server.coffee":9,"./widget_command_server.coffee":13,"./widget_directory.coffee":14,"./widgets_server.coffee":17,"connect":false,"path":false}],9:[function(require,module,exports){
 var clients, currentChanges, serialize, timer;
 
 serialize = require('./serialize.coffee');
@@ -1188,7 +1188,41 @@ exports.middleware = function(req, res, next) {
 };
 
 
-},{"./serialize.coffee":10}],10:[function(require,module,exports){
+},{"./serialize.coffee":11}],10:[function(require,module,exports){
+module.exports = function(event, domEl, changeHandler) {
+  var currentFrame, end, k, prevPosition, update, v, _ref;
+  prevPosition = {
+    x: event.pageX,
+    y: event.pageY
+  };
+  currentFrame = {};
+  _ref = domEl.getBoundingClientRect();
+  for (k in _ref) {
+    v = _ref[k];
+    currentFrame[k] = v;
+  }
+  update = function(e) {
+    var dx, dy, _ref1;
+    _ref1 = [e.pageX - prevPosition.x, e.pageY - prevPosition.y], dx = _ref1[0], dy = _ref1[1];
+    prevPosition = {
+      x: e.pageX,
+      y: e.pageY
+    };
+    currentFrame.left += dx;
+    currentFrame.top += dy;
+    return changeHandler(currentFrame);
+  };
+  end = function(e) {
+    update(e);
+    document.removeEventListener('mousemove', update);
+    return document.removeEventListener('mouseup', end);
+  };
+  document.addEventListener('mousemove', update);
+  return document.addEventListener('mouseup', end);
+};
+
+
+},{}],11:[function(require,module,exports){
 module.exports = function(someWidgets) {
   var id, serialized, widget;
   serialized = "({";
@@ -1204,7 +1238,7 @@ module.exports = function(someWidgets) {
 };
 
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 var exec, nib, stylus, toSource;
 
 exec = require('child_process').exec;
@@ -1253,11 +1287,14 @@ module.exports = function(implementation) {
     return el;
   };
   api.destroy = function() {
+    var _ref;
     api.stop();
     if (el == null) {
       return;
     }
-    el.parentNode.removeChild(el);
+    if ((_ref = el.parentNode) != null) {
+      _ref.removeChild(el);
+    }
     el = null;
     return contentEl = null;
   };
@@ -1278,11 +1315,18 @@ module.exports = function(implementation) {
   api.exec = function(options, callback) {
     return exec(implementation.command, options, callback);
   };
-  api.domEl = function() {
-    return el;
-  };
   api.serialize = function() {
     return toSource(implementation);
+  };
+  api.setFrame = function(frame) {
+    var attr, _i, _len, _ref, _results;
+    _ref = ['top', 'right', 'bottom', 'left'];
+    _results = [];
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      attr = _ref[_i];
+      _results.push(contentEl.style[attr] = frame[attr] + 'px');
+    }
+    return _results;
   };
   redraw = function(output, error) {
     var e;
@@ -1309,9 +1353,6 @@ module.exports = function(implementation) {
     }
   };
   refresh = function() {
-    if (window.huh) {
-      console.debug(setTimeout);
-    }
     return $.get('/widgets/' + api.id).done(function(response) {
       if (started) {
         return redraw(response);
@@ -1323,9 +1364,6 @@ module.exports = function(implementation) {
     }).always(function() {
       if (!started) {
         return;
-      }
-      if (window.huh) {
-        console.debug('yay');
       }
       return timer = setTimeout(refresh, api.refreshFrequency);
     });
@@ -1361,7 +1399,7 @@ module.exports = function(implementation) {
 };
 
 
-},{"child_process":false,"nib":false,"stylus":false,"tosource":6}],12:[function(require,module,exports){
+},{"child_process":false,"nib":false,"stylus":false,"tosource":6}],13:[function(require,module,exports){
 module.exports = function(widgetDir) {
   return function(req, res, next) {
     var parts, widget;
@@ -1387,7 +1425,7 @@ module.exports = function(widgetDir) {
 };
 
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 var Widget, loader, paths;
 
 Widget = require('./widget.coffee');
@@ -1489,7 +1527,7 @@ module.exports = function(directoryPath) {
 };
 
 
-},{"./widget.coffee":11,"./widget_loader.coffee":14,"chokidar":1,"path":false}],14:[function(require,module,exports){
+},{"./widget.coffee":12,"./widget_loader.coffee":15,"chokidar":1,"path":false}],15:[function(require,module,exports){
 var coffee, fs, loadWidget;
 
 fs = require('fs');
@@ -1517,7 +1555,70 @@ exports.loadWidget = loadWidget = function(filePath) {
 };
 
 
-},{"coffee-script":false,"fs":false}],15:[function(require,module,exports){
+},{"coffee-script":false,"fs":false}],16:[function(require,module,exports){
+var DragHandler;
+
+DragHandler = require('./drag_handler.coffee');
+
+module.exports = function(widgets) {
+  var api, getLocalSettings, getWidget, getWidgetFrame, init, startPositioning, storeLocalSettings, storeWidgetFrame;
+  api = {};
+  init = function() {
+    document.addEventListener('mousedown', startPositioning);
+    return api;
+  };
+  api.destroy = function() {
+    return document.removeEventListener('mousedown', startPositioning);
+  };
+  api.positonWidget = function(widget) {
+    var frame;
+    frame = getWidgetFrame(widget);
+    if (!frame) {
+      return;
+    }
+    return widget.setFrame(frame);
+  };
+  startPositioning = function(e) {
+    var el, widget;
+    if ((el = getWidget(e.target)) == null) {
+      return;
+    }
+    widget = widgets.get(el.id);
+    return DragHandler(e, el, function(frame) {
+      storeWidgetFrame(widget, frame);
+      return widget.setFrame(frame);
+    });
+  };
+  getWidget = function(element) {
+    if (element === document.body || element === document) {
+      return;
+    }
+    if (element.className === 'widget' && element.id) {
+      return element;
+    } else {
+      return getWidget(element.parentElement);
+    }
+  };
+  getWidgetFrame = function(widget) {
+    return getLocalSettings(widget).frame;
+  };
+  storeWidgetFrame = function(widget, frame) {
+    var settings;
+    settings = getLocalSettings(widget);
+    settings.frame = frame;
+    return storeLocalSettings(widget, settings);
+  };
+  getLocalSettings = function(widget) {
+    return JSON.parse(localStorage.getItem(widget.id) || '{}');
+  };
+  storeLocalSettings = function(widget, settings) {
+    return localStorage.setItem(widget.id, JSON.stringify(settings));
+  };
+  return init();
+};
+
+
+},{"./drag_handler.coffee":10}],17:[function(require,module,exports){
 var serialize;
 
 serialize = require('./serialize.coffee');
@@ -1534,4 +1635,4 @@ module.exports = function(widgetDir) {
 };
 
 
-},{"./serialize.coffee":10}]},{},[7,8,9,10,11,12,13,14,15])
+},{"./serialize.coffee":11}]},{},[7,8,9,10,11,12,13,14,15,16,17])

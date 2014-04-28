@@ -1,17 +1,31 @@
-Widget = require './src/widget.coffee'
+Widget      = require './src/widget.coffee'
+Positioning = require './src/widget_positioning_engine.coffee'
 
-widgets   = {}
-contentEl = null
+widgets    = {}
+contentEl  = null
+positioner = null
 
 init = ->
-  widgets = {}
-  contentEl = document.getElementsByClassName('content')[0]
-  contentEl.innerHTML = ''
+  contentEl = document.createElement('div')
+  contentEl.className = 'content'
+  document.body.appendChild(contentEl)
+
+  positioner = Positioning get: (id) -> widgets[id]
+
   getWidgets (err, widgetSettings) ->
-    console.log err if err?
-    return setTimeout init, 10000 if err?
-    initWidgets widgetSettings
-    setTimeout getChanges
+    if err?
+      console.log err
+      destroy()
+      setTimeout init, 10000
+    else
+      initWidgets widgetSettings
+      setTimeout getChanges
+
+destroy = ->
+  widget.destroy() for id, widget of widgets
+  widgets = {}
+  contentEl?.innerHTML = ''
+  positioner.destroy()
 
 getWidgets = (callback) ->
   $.get('/widgets')
@@ -24,7 +38,9 @@ getChanges = ->
       initWidgets eval(response) if response
       getChanges()
     )
-    .fail -> setTimeout init, 10000
+    .fail ->
+      destroy()
+      setTimeout init, 10000
 
 initWidgets = (widgetSettings) ->
   for id, settings of widgetSettings
@@ -39,6 +55,8 @@ initWidgets = (widgetSettings) ->
 
 initWidget = (widget) ->
   contentEl.appendChild widget.create()
+  positioner.positonWidget(widget)
   widget.start()
 
+window.reset  = destroy
 window.onload = init

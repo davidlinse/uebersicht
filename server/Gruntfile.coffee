@@ -61,6 +61,10 @@ module.exports = (grunt) ->
         specs: '<%=config.specDir%>/frontend_specs.js'
         vendor: '<%=config.specDir%>/vendor/*.js'
         build: true
+        page:
+          viewportSize:
+            width: 1000
+            height: 1000
 
 
   # load plugins

@@ -3291,8 +3291,6 @@ if (typeof sinon == "undefined") {
         clock[method].hadOwnProperty = Object.prototype.hasOwnProperty.call(global, method);
         clock["_" + method] = global[method];
 
-        console.debug(method, global)
-
         if (method == "Date") {
             var date = mirrorDateProperties(clock[method], global[method]);
             global[method] = date;

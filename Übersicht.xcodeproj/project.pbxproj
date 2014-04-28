@@ -82,6 +82,7 @@
 		DC4F43F1189E90DD00937925 /* status-icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "status-icon.png"; sourceTree = "<group>"; };
 		DC4F43F2189E90DD00937925 /* status-icon@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "status-icon@2x.png"; sourceTree = "<group>"; };
 		DC4FC28018EAB1CA00B7FD79 /* übersicht-logo.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "übersicht-logo.png"; sourceTree = "<group>"; };
+		DC4FD740190E22290063B3FF /* WebPreferences.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebPreferences.h; sourceTree = "<group>"; };
 		DC57ED2A18DB4EC900A24FDD /* UBPreferencesController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = UBPreferencesController.h; sourceTree = "<group>"; };
 		DC57ED2B18DB4EC900A24FDD /* UBPreferencesController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = UBPreferencesController.m; sourceTree = "<group>"; };
 		DC57ED2C18DB4EC900A24FDD /* UBPreferencesController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = UBPreferencesController.xib; sourceTree = "<group>"; };
@@ -168,6 +169,7 @@
 				DC43AD9117EC2D9500241CC2 /* UBAppDelegate.h */,
 				DC43AD9217EC2D9500241CC2 /* UBAppDelegate.m */,
 				DCE2453D18ED864800C9FAE3 /* WebInspector.h */,
+				DC4FD740190E22290063B3FF /* WebPreferences.h */,
 				DC43ADB317EC31EB00241CC2 /* UBWindow.h */,
 				DC43ADB417EC31EB00241CC2 /* UBWindow.m */,
 				DC57ED2A18DB4EC900A24FDD /* UBPreferencesController.h */,
