@@ -74,8 +74,11 @@ module.exports = (implementation) ->
     toSource implementation
 
   api.setFrame = (frame) ->
-    for attr in ['top', 'right', 'bottom', 'left']
-      contentEl.style[attr] = frame[attr] + 'px'
+    contentEl.style.top    = frame.top+'px'    if frame.top?
+    contentEl.style.right  = frame.right+'px'  if frame.right?
+    contentEl.style.bottom = frame.bottom+'px' if frame.bottom?
+    contentEl.style.left   = frame.left+'px'   if frame.left?
+    contentEl.style.margin = 0
 
   redraw = (output, error) ->
     if error

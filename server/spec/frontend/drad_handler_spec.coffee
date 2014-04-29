@@ -24,7 +24,8 @@ describe 'drag handler', ->
     currentFrame  = null
     changeHandler = (frame) -> currentFrame = frame
 
-    DragHandler { pageX: 10, pageY: 20 }, domEl[0], changeHandler
+    DragHandler({ pageX: 10, pageY: 20 }, domEl[0])
+      .update changeHandler
 
     position = getPosition()
     expect(position.left).toBe 0

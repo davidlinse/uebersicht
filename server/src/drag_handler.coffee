@@ -1,4 +1,9 @@
-module.exports = (event, domEl, changeHandler) ->
+module.exports = (event, domEl) ->
+  api = {}
+
+  updateHandler = ->
+  endHandler    = ->
+
   prevPosition =
     x: event.pageX
     y: event.pageY
@@ -13,12 +18,21 @@ module.exports = (event, domEl, changeHandler) ->
     currentFrame.left += dx
     currentFrame.top  += dy
 
-    changeHandler currentFrame
+    updateHandler currentFrame
 
   end = (e) ->
     update(e)
     document.removeEventListener 'mousemove', update
     document.removeEventListener 'mouseup' , end
+    endHandler()
 
   document.addEventListener 'mousemove', update
   document.addEventListener 'mouseup', end
+
+  api.update = (handler) ->
+    updateHandler = handler
+
+  api.end = (handler) ->
+    endHandler = handler
+
+  api

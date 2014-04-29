@@ -32,6 +32,7 @@
     [mainView setDrawsBackground:NO];
     [mainView setMaintainsBackForwardList:NO];
     [self enableLocalStorage:mainView];
+    [mainView.window setLevel:kCGNormalWindowLevel-1];
     
     statusBarItem = [self addStatusItemToMenu: statusBarMenu];
     preferences   = [[UBPreferencesController alloc] initWithWindowNibName:@"UBPreferencesController"];

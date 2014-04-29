@@ -227,8 +227,11 @@ exports.middleware = function(req, res, next) {
 
 
 },{"./serialize.coffee":7}],6:[function(require,module,exports){
-module.exports = function(event, domEl, changeHandler) {
-  var currentFrame, end, k, prevPosition, update, v, _ref;
+module.exports = function(event, domEl) {
+  var api, currentFrame, end, endHandler, k, prevPosition, update, updateHandler, v, _ref;
+  api = {};
+  updateHandler = function() {};
+  endHandler = function() {};
   prevPosition = {
     x: event.pageX,
     y: event.pageY
@@ -248,15 +251,23 @@ module.exports = function(event, domEl, changeHandler) {
     };
     currentFrame.left += dx;
     currentFrame.top += dy;
-    return changeHandler(currentFrame);
+    return updateHandler(currentFrame);
   };
   end = function(e) {
     update(e);
     document.removeEventListener('mousemove', update);
-    return document.removeEventListener('mouseup', end);
+    document.removeEventListener('mouseup', end);
+    return endHandler();
   };
   document.addEventListener('mousemove', update);
-  return document.addEventListener('mouseup', end);
+  document.addEventListener('mouseup', end);
+  api.update = function(handler) {
+    return updateHandler = handler;
+  };
+  api.end = function(handler) {
+    return endHandler = handler;
+  };
+  return api;
 };
 
 
@@ -357,14 +368,19 @@ module.exports = function(implementation) {
     return toSource(implementation);
   };
   api.setFrame = function(frame) {
-    var attr, _i, _len, _ref, _results;
-    _ref = ['top', 'right', 'bottom', 'left'];
-    _results = [];
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      attr = _ref[_i];
-      _results.push(contentEl.style[attr] = frame[attr] + 'px');
+    if (frame.top != null) {
+      contentEl.style.top = frame.top + 'px';
     }
-    return _results;
+    if (frame.right != null) {
+      contentEl.style.right = frame.right + 'px';
+    }
+    if (frame.bottom != null) {
+      contentEl.style.bottom = frame.bottom + 'px';
+    }
+    if (frame.left != null) {
+      contentEl.style.left = frame.left + 'px';
+    }
+    return contentEl.style.margin = 0;
   };
   redraw = function(output, error) {
     var e;
@@ -599,14 +615,26 @@ var DragHandler;
 DragHandler = require('./drag_handler.coffee');
 
 module.exports = function(widgets) {
-  var api, getLocalSettings, getWidget, getWidgetFrame, init, startPositioning, storeLocalSettings, storeWidgetFrame;
+  var api, cancelAnimFrame, canvas, clearFrame, context, fillFrame, getLocalSettings, getWidget, getWidgetFrame, guidesWidth, init, initCanvas, renderDrag, renderGuides, requestAnimFrame, startPositioning, storeLocalSettings, storeWidgetFrame, strokeFrame;
   api = {};
+  canvas = null;
+  context = null;
+  requestAnimFrame = typeof webkitRequestAnimationFrame !== "undefined" && webkitRequestAnimationFrame !== null ? webkitRequestAnimationFrame : setTimeout;
+  cancelAnimFrame = typeof webkitCancelAnimationFrame !== "undefined" && webkitCancelAnimationFrame !== null ? webkitCancelAnimationFrame : clearTimeout;
+  guidesWidth = 2;
   init = function() {
     document.addEventListener('mousedown', startPositioning);
+    canvas = document.createElement('canvas');
+    context = canvas.getContext("2d");
+    document.body.insertBefore(canvas, document.body.firstChild);
+    initCanvas();
     return api;
   };
   api.destroy = function() {
-    return document.removeEventListener('mousedown', startPositioning);
+    document.removeEventListener('mousedown', startPositioning);
+    if (canvas.parentElement != null) {
+      return document.body.removeChild(canvas);
+    }
   };
   api.positonWidget = function(widget) {
     var frame;
@@ -617,15 +645,74 @@ module.exports = function(widgets) {
     return widget.setFrame(frame);
   };
   startPositioning = function(e) {
-    var el, widget;
+    var el, handler, prevFrame, request, widget;
     if ((el = getWidget(e.target)) == null) {
       return;
     }
     widget = widgets.get(el.id);
-    return DragHandler(e, el, function(frame) {
-      storeWidgetFrame(widget, frame);
-      return widget.setFrame(frame);
+    context.fillStyle = "rgba(255, 255, 255, 0.4)";
+    context.strokeStyle = "#289ed6";
+    context.lineWidth = guidesWidth;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    prevFrame = {};
+    handler = DragHandler(e, el);
+    request = null;
+    handler.update(function(frame) {
+      request = requestAnimFrame(renderDrag(widget, prevFrame, frame));
+      return prevFrame = {
+        left: frame.left - 1,
+        top: frame.top - 1,
+        width: frame.width + 2,
+        height: frame.height + 2
+      };
     });
+    return handler.end(function() {
+      cancelAnimFrame(request);
+      storeWidgetFrame(widget, {
+        top: prevFrame.top + 1,
+        left: prevFrame.left + 1
+      });
+      return context.clearRect(0, 0, canvas.width, canvas.height);
+    });
+  };
+  renderDrag = function(widget, prevFrame, frame) {
+    return function() {
+      renderGuides(prevFrame, frame);
+      widget.setFrame({
+        top: frame.top,
+        left: frame.left
+      });
+      clearFrame(prevFrame);
+      fillFrame(prevFrame);
+      return clearFrame(frame);
+    };
+  };
+  renderGuides = function(prevFrame, frame) {
+    var left, oldGuideRect, top;
+    oldGuideRect = {
+      left: Math.floor(prevFrame.left + prevFrame.width / 2 - 10),
+      top: 0,
+      width: 20,
+      height: prevFrame.top
+    };
+    clearFrame(oldGuideRect);
+    fillFrame(oldGuideRect);
+    oldGuideRect = {
+      left: 0,
+      top: Math.floor(prevFrame.top + prevFrame.height / 2 - 10),
+      width: prevFrame.left,
+      height: 20
+    };
+    clearFrame(oldGuideRect);
+    fillFrame(oldGuideRect);
+    context.beginPath();
+    left = frame.left + frame.width / 2 - guidesWidth / 2;
+    top = frame.top + frame.height / 2 - guidesWidth / 2;
+    context.moveTo(frame.left, top);
+    context.lineTo(0, top);
+    context.moveTo(left, frame.top);
+    context.lineTo(left, 0);
+    return context.stroke();
   };
   getWidget = function(element) {
     if (element === document.body || element === document) {
@@ -651,6 +738,22 @@ module.exports = function(widgets) {
   };
   storeLocalSettings = function(widget, settings) {
     return localStorage.setItem(widget.id, JSON.stringify(settings));
+  };
+  initCanvas = function() {
+    canvas.style.position = 'absolute';
+    canvas.style.top = 0;
+    canvas.style.left = 0;
+    canvas.width = window.innerWidth;
+    return canvas.height = window.innerHeight;
+  };
+  fillFrame = function(frame) {
+    return context.fillRect(frame.left, frame.top, frame.width, frame.height);
+  };
+  strokeFrame = function(frame) {
+    return context.strokeRect(frame.left, frame.top, frame.width, frame.height);
+  };
+  clearFrame = function(frame) {
+    return context.clearRect(frame.left, frame.top, frame.width, frame.height);
   };
   return init();
 };
