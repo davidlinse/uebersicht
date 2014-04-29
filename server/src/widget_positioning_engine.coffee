@@ -1,4 +1,5 @@
 DragHandler = require './drag_handler.coffee'
+Rect        = require './rectangle_math.coffee'
 
 module.exports = (widgets) ->
   api = {}
@@ -28,37 +29,37 @@ module.exports = (widgets) ->
     widget.setFrame frame
 
   startPositioning = (e) ->
-    return unless (el = getWidget(e.target))?
+    return unless (el = getWidget(left: e.clientX, top: e.clientY))?
     widget = widgets.get el.id
 
-    context.fillStyle   = "rgba(255, 255, 255, 0.4)"
-    context.strokeStyle = "#289ed6"
-    context.lineWidth   = guidesWidth
-    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.fillStyle = "rgba(255, 255, 255, 0.4)"
 
     prevFrame = {}
     handler   = DragHandler(e, el)
     request   = null
 
     handler.update (frame) ->
-      request = requestAnimFrame renderDrag(widget, prevFrame, frame)
-      prevFrame =
-        left: frame.left - 1
-        top : frame.top  - 1
-        width : frame.width  + 2
-        height: frame.height + 2
+      request   = requestAnimFrame renderDrag(widget, prevFrame, frame)
+      prevFrame = {}
+      prevFrame[k] = v for k, v of frame
 
     handler.end ->
       cancelAnimFrame request
-      storeWidgetFrame widget, top: prevFrame.top+1, left: prevFrame.left+1
+      storeWidgetFrame widget, slice(prevFrame, ['top', 'left', 'width', 'height'])
       context.clearRect(0, 0, canvas.width, canvas.height)
 
   renderDrag = (widget, prevFrame, frame) -> ->
     renderGuides prevFrame, frame
-    widget.setFrame top: frame.top, left: frame.left
-    clearFrame prevFrame
-    fillFrame  prevFrame
-    clearFrame frame
+    widget.setFrame slice(frame, ['top', 'left', 'width', 'height'])
+
+    clearFrame(Rect.outset(prevFrame, 5))
+
+    context.save()
+    context.setLineDash([5])
+    context.strokeStyle = "#fff"
+    context.lineWidth   = 2
+    strokeFrame Rect.outset(frame,2)
+    context.restore()
 
   renderGuides = (prevFrame, frame) ->
     oldGuideRect =
@@ -68,7 +69,6 @@ module.exports = (widgets) ->
       height: prevFrame.top
 
     clearFrame oldGuideRect
-    fillFrame  oldGuideRect
 
     oldGuideRect =
       left  : 0
@@ -77,23 +77,28 @@ module.exports = (widgets) ->
       height: 20
 
     clearFrame oldGuideRect
-    fillFrame  oldGuideRect
 
-    context.beginPath()
     left = frame.left+frame.width/2 - guidesWidth/2
     top  = frame.top+frame.height/2 - guidesWidth/2
+
+    context.beginPath()
     context.moveTo(frame.left, top)
     context.lineTo(0,top)
     context.moveTo(left, frame.top)
     context.lineTo(left, 0)
-    context.stroke()
 
-  getWidget = (element) ->
-    return if element == document.body or element == document
-    if element.className == 'widget' and element.id
-      return element
-    else
-      getWidget element.parentElement
+    context.save()
+    context.strokeStyle = "#289ed6"
+    context.lineWidth   = guidesWidth
+    context.stroke()
+    context.restore()
+
+  getWidget = (point) ->
+    for widgetEl in document.getElementsByClassName('widget')
+      continue unless widgetEl.id?
+      if Rect.pointInRect point, widgetEl.getBoundingClientRect()
+        return widgetEl
+
 
   getWidgetFrame = (widget) ->
     getLocalSettings(widget).frame
@@ -125,6 +130,11 @@ module.exports = (widgets) ->
 
   clearFrame = (frame) ->
     context.clearRect frame.left, frame.top, frame.width, frame.height
+
+  slice = (object, keys) ->
+    result = {}
+    result[k] = object[k] for k in keys
+    result
 
   init()
 

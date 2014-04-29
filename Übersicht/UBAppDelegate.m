@@ -31,7 +31,10 @@
 {
     [mainView setDrawsBackground:NO];
     [mainView setMaintainsBackForwardList:NO];
+    [mainView.layer setBackgroundColor:CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0)];
+
     [self enableLocalStorage:mainView];
+    // TODO: remove after debugging!
     [mainView.window setLevel:kCGNormalWindowLevel-1];
     
     statusBarItem = [self addStatusItemToMenu: statusBarMenu];

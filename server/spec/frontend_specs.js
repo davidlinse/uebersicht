@@ -95,7 +95,7 @@ window.reset = destroy;
 window.onload = init;
 
 
-},{"./src/widget.coffee":9,"./src/widget_positioning_engine.coffee":10}],2:[function(require,module,exports){
+},{"./src/widget.coffee":10,"./src/widget_positioning_engine.coffee":11}],2:[function(require,module,exports){
 
 },{}],3:[function(require,module,exports){
 /* toSource by Marcello Bastea-Forte - zlib license */
@@ -340,7 +340,7 @@ describe('widget positioning engine', function() {
 });
 
 
-},{"../../src/widget_positioning_engine.coffee":10}],7:[function(require,module,exports){
+},{"../../src/widget_positioning_engine.coffee":11}],7:[function(require,module,exports){
 var Widget;
 
 Widget = require('../../src/widget.coffee');
@@ -593,7 +593,7 @@ describe('widget', function() {
 });
 
 
-},{"../../src/widget.coffee":9}],8:[function(require,module,exports){
+},{"../../src/widget.coffee":10}],8:[function(require,module,exports){
 module.exports = function(event, domEl) {
   var api, currentFrame, end, endHandler, k, prevPosition, update, updateHandler, v, _ref;
   api = {};
@@ -639,6 +639,21 @@ module.exports = function(event, domEl) {
 
 
 },{}],9:[function(require,module,exports){
+exports.outset = function(rect, delta) {
+  return {
+    top: rect.top - delta,
+    left: rect.left - delta,
+    width: rect.width + 2 * delta,
+    height: rect.height + 2 * delta
+  };
+};
+
+exports.pointInRect = function(point, rect) {
+  return point.left >= rect.left && point.top >= rect.top && point.left <= rect.left + rect.width && point.top <= rect.top + rect.height;
+};
+
+
+},{}],10:[function(require,module,exports){
 var exec, nib, stylus, toSource;
 
 exec = require('child_process').exec;
@@ -731,6 +746,12 @@ module.exports = function(implementation) {
     if (frame.left != null) {
       contentEl.style.left = frame.left + 'px';
     }
+    if (frame.width != null) {
+      contentEl.style.width = frame.width + 'px';
+    }
+    if (frame.height != null) {
+      contentEl.style.height = frame.height + 'px';
+    }
     return contentEl.style.margin = 0;
   };
   redraw = function(output, error) {
@@ -804,13 +825,15 @@ module.exports = function(implementation) {
 };
 
 
-},{"child_process":2,"nib":2,"stylus":2,"tosource":3}],10:[function(require,module,exports){
-var DragHandler;
+},{"child_process":2,"nib":2,"stylus":2,"tosource":3}],11:[function(require,module,exports){
+var DragHandler, Rect;
 
 DragHandler = require('./drag_handler.coffee');
 
+Rect = require('./rectangle_math.coffee');
+
 module.exports = function(widgets) {
-  var api, cancelAnimFrame, canvas, clearFrame, context, fillFrame, getLocalSettings, getWidget, getWidgetFrame, guidesWidth, init, initCanvas, renderDrag, renderGuides, requestAnimFrame, startPositioning, storeLocalSettings, storeWidgetFrame, strokeFrame;
+  var api, cancelAnimFrame, canvas, clearFrame, context, fillFrame, getLocalSettings, getWidget, getWidgetFrame, guidesWidth, init, initCanvas, renderDrag, renderGuides, requestAnimFrame, slice, startPositioning, storeLocalSettings, storeWidgetFrame, strokeFrame;
   api = {};
   canvas = null;
   context = null;
@@ -841,45 +864,45 @@ module.exports = function(widgets) {
   };
   startPositioning = function(e) {
     var el, handler, prevFrame, request, widget;
-    if ((el = getWidget(e.target)) == null) {
+    if ((el = getWidget({
+      left: e.clientX,
+      top: e.clientY
+    })) == null) {
       return;
     }
     widget = widgets.get(el.id);
     context.fillStyle = "rgba(255, 255, 255, 0.4)";
-    context.strokeStyle = "#289ed6";
-    context.lineWidth = guidesWidth;
-    context.fillRect(0, 0, canvas.width, canvas.height);
     prevFrame = {};
     handler = DragHandler(e, el);
     request = null;
     handler.update(function(frame) {
+      var k, v, _results;
       request = requestAnimFrame(renderDrag(widget, prevFrame, frame));
-      return prevFrame = {
-        left: frame.left - 1,
-        top: frame.top - 1,
-        width: frame.width + 2,
-        height: frame.height + 2
-      };
+      prevFrame = {};
+      _results = [];
+      for (k in frame) {
+        v = frame[k];
+        _results.push(prevFrame[k] = v);
+      }
+      return _results;
     });
     return handler.end(function() {
       cancelAnimFrame(request);
-      storeWidgetFrame(widget, {
-        top: prevFrame.top + 1,
-        left: prevFrame.left + 1
-      });
+      storeWidgetFrame(widget, slice(prevFrame, ['top', 'left', 'width', 'height']));
       return context.clearRect(0, 0, canvas.width, canvas.height);
     });
   };
   renderDrag = function(widget, prevFrame, frame) {
     return function() {
       renderGuides(prevFrame, frame);
-      widget.setFrame({
-        top: frame.top,
-        left: frame.left
-      });
-      clearFrame(prevFrame);
-      fillFrame(prevFrame);
-      return clearFrame(frame);
+      widget.setFrame(slice(frame, ['top', 'left', 'width', 'height']));
+      clearFrame(Rect.outset(prevFrame, 5));
+      context.save();
+      context.setLineDash([5]);
+      context.strokeStyle = "#fff";
+      context.lineWidth = 2;
+      strokeFrame(Rect.outset(frame, 2));
+      return context.restore();
     };
   };
   renderGuides = function(prevFrame, frame) {
@@ -891,7 +914,6 @@ module.exports = function(widgets) {
       height: prevFrame.top
     };
     clearFrame(oldGuideRect);
-    fillFrame(oldGuideRect);
     oldGuideRect = {
       left: 0,
       top: Math.floor(prevFrame.top + prevFrame.height / 2 - 10),
@@ -899,24 +921,30 @@ module.exports = function(widgets) {
       height: 20
     };
     clearFrame(oldGuideRect);
-    fillFrame(oldGuideRect);
-    context.beginPath();
     left = frame.left + frame.width / 2 - guidesWidth / 2;
     top = frame.top + frame.height / 2 - guidesWidth / 2;
+    context.beginPath();
     context.moveTo(frame.left, top);
     context.lineTo(0, top);
     context.moveTo(left, frame.top);
     context.lineTo(left, 0);
-    return context.stroke();
+    context.save();
+    context.strokeStyle = "#289ed6";
+    context.lineWidth = guidesWidth;
+    context.stroke();
+    return context.restore();
   };
-  getWidget = function(element) {
-    if (element === document.body || element === document) {
-      return;
-    }
-    if (element.className === 'widget' && element.id) {
-      return element;
-    } else {
-      return getWidget(element.parentElement);
+  getWidget = function(point) {
+    var widgetEl, _i, _len, _ref;
+    _ref = document.getElementsByClassName('widget');
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      widgetEl = _ref[_i];
+      if (widgetEl.id == null) {
+        continue;
+      }
+      if (Rect.pointInRect(point, widgetEl.getBoundingClientRect())) {
+        return widgetEl;
+      }
     }
   };
   getWidgetFrame = function(widget) {
@@ -950,8 +978,17 @@ module.exports = function(widgets) {
   clearFrame = function(frame) {
     return context.clearRect(frame.left, frame.top, frame.width, frame.height);
   };
+  slice = function(object, keys) {
+    var k, result, _i, _len;
+    result = {};
+    for (_i = 0, _len = keys.length; _i < _len; _i++) {
+      k = keys[_i];
+      result[k] = object[k];
+    }
+    return result;
+  };
   return init();
 };
 
 
-},{"./drag_handler.coffee":8}]},{},[4,5,6,7])
+},{"./drag_handler.coffee":8,"./rectangle_math.coffee":9}]},{},[4,5,6,7])

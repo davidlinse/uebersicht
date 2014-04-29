@@ -78,6 +78,8 @@ module.exports = (implementation) ->
     contentEl.style.right  = frame.right+'px'  if frame.right?
     contentEl.style.bottom = frame.bottom+'px' if frame.bottom?
     contentEl.style.left   = frame.left+'px'   if frame.left?
+    contentEl.style.width  = frame.width+'px'  if frame.width?
+    contentEl.style.height = frame.height+'px' if frame.height?
     contentEl.style.margin = 0
 
   redraw = (output, error) ->

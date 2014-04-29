@@ -31,10 +31,8 @@
     if (self) {
         [self setBackgroundColor:[NSColor clearColor]];
         [self setOpaque:NO];
+        [self setIgnoresMouseEvents:NO];
         [self setLevel:kCGDesktopWindowLevel];
-        [self setCollectionBehavior:(NSWindowCollectionBehaviorTransient |
-                                     NSWindowCollectionBehaviorCanJoinAllSpaces |
-                                     NSWindowCollectionBehaviorIgnoresCycle)];
         [self makeFullscreen];
         
         [self setRestorable:NO];
