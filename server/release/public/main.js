@@ -403,6 +403,9 @@ module.exports = function(implementation) {
     }
     return contentEl.style.margin = 0;
   };
+  api.contentEl = function() {
+    return contentEl;
+  };
   redraw = function(output, error) {
     var e;
     if (error) {
@@ -631,30 +634,40 @@ exports.loadWidget = loadWidget = function(filePath) {
 
 
 },{"coffee-script":2,"fs":2}],13:[function(require,module,exports){
-var DragHandler, Rect;
+var DragHandler, Rect, cancelAnimFrame, guidesWidth, requestAnimFrame;
 
 DragHandler = require('./drag_handler.coffee');
 
 Rect = require('./rectangle_math.coffee');
 
+requestAnimFrame = typeof webkitRequestAnimationFrame !== "undefined" && webkitRequestAnimationFrame !== null ? webkitRequestAnimationFrame : setTimeout;
+
+cancelAnimFrame = typeof webkitCancelAnimationFrame !== "undefined" && webkitCancelAnimationFrame !== null ? webkitCancelAnimationFrame : clearTimeout;
+
+guidesWidth = 1;
+
 module.exports = function(widgets) {
-  var api, cancelAnimFrame, canvas, clearFrame, context, fillFrame, getLocalSettings, getWidget, getWidgetFrame, guidesWidth, init, initCanvas, renderDrag, renderGuides, requestAnimFrame, slice, startPositioning, storeLocalSettings, storeWidgetFrame, strokeFrame;
+  var api, canvas, chromeEl, clearFrame, context, currentWidget, fillFrame, getLocalSettings, getWidgetAt, getWidgetFrame, guideDimensions, init, initCanvas, onMouseDown, renderChrome, renderDrag, renderGuide, renderGuides, selectWidget, slice, startPositioning, storeLocalSettings, storeWidgetFrame, strokeFrame;
   api = {};
   canvas = null;
   context = null;
-  requestAnimFrame = typeof webkitRequestAnimationFrame !== "undefined" && webkitRequestAnimationFrame !== null ? webkitRequestAnimationFrame : setTimeout;
-  cancelAnimFrame = typeof webkitCancelAnimationFrame !== "undefined" && webkitCancelAnimationFrame !== null ? webkitCancelAnimationFrame : clearTimeout;
-  guidesWidth = 2;
+  currentWidget = null;
+  chromeEl = null;
   init = function() {
-    document.addEventListener('mousedown', startPositioning);
+    document.addEventListener('mousedown', onMouseDown);
     canvas = document.createElement('canvas');
     context = canvas.getContext("2d");
     document.body.insertBefore(canvas, document.body.firstChild);
     initCanvas();
+    chromeEl = document.createElement('div');
+    chromeEl.className = 'widget-chrome';
+    chromeEl.innerHTML = "<div class='link top'></div>\n<div class='link right'></div>\n<div class='link bottom'></div>\n<div class='link left'></div>";
+    chromeEl.style.position = 'absolute';
+    document.body.appendChild(chromeEl);
     return api;
   };
   api.destroy = function() {
-    document.removeEventListener('mousedown', startPositioning);
+    document.removeEventListener('mousedown', onMouseDown);
     if (canvas.parentElement != null) {
       return document.body.removeChild(canvas);
     }
@@ -667,18 +680,33 @@ module.exports = function(widgets) {
     }
     return widget.setFrame(frame);
   };
-  startPositioning = function(e) {
-    var el, handler, prevFrame, request, widget;
-    if ((el = getWidget({
+  onMouseDown = function(e) {
+    var widget;
+    widget = getWidgetAt({
       left: e.clientX,
       top: e.clientY
-    })) == null) {
+    });
+    if (widget == null) {
       return;
     }
-    widget = widgets.get(el.id);
+    startPositioning(widget, e);
+    return selectWidget(widget);
+  };
+  selectWidget = function(widget) {
+    var frame, oldFrame;
+    oldFrame = {};
+    if (currentWidget != null) {
+      oldFrame = currentWidget.contentEl().getBoundingClientRect();
+    }
+    frame = widget.contentEl().getBoundingClientRect();
+    currentWidget = widget;
+    return renderChrome(oldFrame, frame);
+  };
+  startPositioning = function(widget, e) {
+    var handler, prevFrame, request;
     context.fillStyle = "rgba(255, 255, 255, 0.4)";
     prevFrame = {};
-    handler = DragHandler(e, el);
+    handler = DragHandler(e, widget.contentEl());
     request = null;
     handler.update(function(frame) {
       var k, v, _results;
@@ -694,53 +722,94 @@ module.exports = function(widgets) {
     return handler.end(function() {
       cancelAnimFrame(request);
       storeWidgetFrame(widget, slice(prevFrame, ['top', 'left', 'width', 'height']));
-      return context.clearRect(0, 0, canvas.width, canvas.height);
+      return renderGuides(prevFrame, {});
     });
+  };
+  renderChrome = function(prevFrame, frame) {
+    frame = Rect.outset(frame, 2);
+    chromeEl.style.left = frame.left + 'px';
+    chromeEl.style.top = frame.top + 'px';
+    chromeEl.style.width = frame.width + 'px';
+    return chromeEl.style.height = frame.height + 'px';
   };
   renderDrag = function(widget, prevFrame, frame) {
     return function() {
       renderGuides(prevFrame, frame);
       widget.setFrame(slice(frame, ['top', 'left', 'width', 'height']));
-      clearFrame(Rect.outset(prevFrame, 5));
-      context.save();
-      context.setLineDash([5]);
-      context.strokeStyle = "#fff";
-      context.lineWidth = 2;
-      strokeFrame(Rect.outset(frame, 2));
-      return context.restore();
+      return renderChrome(prevFrame, frame);
     };
   };
   renderGuides = function(prevFrame, frame) {
-    var left, oldGuideRect, top;
+    renderGuide(prevFrame, frame, 'top');
+    return renderGuide(prevFrame, frame, 'left');
+  };
+  renderGuide = function(prevFrame, frame, direction) {
+    var dim, oldGuideRect, rectHeight;
+    dim = guideDimensions(prevFrame, direction);
+    rectHeight = 20;
     oldGuideRect = {
-      left: Math.floor(prevFrame.left + prevFrame.width / 2 - 10),
-      top: 0,
-      width: 20,
-      height: prevFrame.top
+      left: dim.start,
+      top: -rectHeight / 2,
+      width: dim.end,
+      height: rectHeight
     };
-    clearFrame(oldGuideRect);
-    oldGuideRect = {
-      left: 0,
-      top: Math.floor(prevFrame.top + prevFrame.height / 2 - 10),
-      width: prevFrame.left,
-      height: 20
-    };
-    clearFrame(oldGuideRect);
-    left = frame.left + frame.width / 2 - guidesWidth / 2;
-    top = frame.top + frame.height / 2 - guidesWidth / 2;
-    context.beginPath();
-    context.moveTo(frame.left, top);
-    context.lineTo(0, top);
-    context.moveTo(left, frame.top);
-    context.lineTo(left, 0);
     context.save();
+    context.translate(dim.center.x, dim.center.y);
+    context.rotate(dim.angle);
+    clearFrame(oldGuideRect);
+    context.restore();
+    dim = guideDimensions(frame, direction);
+    context.save();
+    context.translate(dim.center.x, dim.center.y);
+    context.rotate(dim.angle);
+    context.beginPath();
+    context.moveTo(dim.start + 5, 0);
+    context.lineTo(dim.end, 0);
+    if (typeof context.setLineDash === "function") {
+      context.setLineDash([5, 2]);
+    }
     context.strokeStyle = "#289ed6";
     context.lineWidth = guidesWidth;
     context.stroke();
     return context.restore();
   };
-  getWidget = function(point) {
-    var widgetEl, _i, _len, _ref;
+  guideDimensions = function(frame, direction) {
+    var angle, center, end, start;
+    center = {
+      x: frame.left + frame.width / 2,
+      y: frame.top + frame.height / 2
+    };
+    switch (direction) {
+      case 'right':
+        angle = 0;
+        start = frame.width / 2;
+        end = canvas.width;
+        break;
+      case 'bottom':
+        angle = Math.PI / 2;
+        start = frame.height / 2;
+        end = canvas.height;
+        break;
+      case 'left':
+        angle = Math.PI;
+        start = frame.width / 2;
+        end = canvas.width;
+        break;
+      case 'top':
+        angle = -Math.PI / 2;
+        start = frame.height / 2;
+        end = canvas.height;
+    }
+    return {
+      angle: angle,
+      start: start,
+      end: end,
+      center: center
+    };
+  };
+  getWidgetAt = function(point) {
+    var foundEl, widgetEl, _i, _len, _ref;
+    foundEl = {};
     _ref = document.getElementsByClassName('widget');
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       widgetEl = _ref[_i];
@@ -748,9 +817,11 @@ module.exports = function(widgets) {
         continue;
       }
       if (Rect.pointInRect(point, widgetEl.getBoundingClientRect())) {
-        return widgetEl;
+        foundEl = widgetEl;
+        break;
       }
     }
+    return widgets.get(foundEl.id);
   };
   getWidgetFrame = function(widget) {
     return getLocalSettings(widget).frame;

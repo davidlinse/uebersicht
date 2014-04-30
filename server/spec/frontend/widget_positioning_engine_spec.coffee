@@ -15,6 +15,7 @@ describe 'widget positioning engine', ->
       widget =
         id: 'foo'
         setFrame: (frame) -> domEl.css(frame)
+        contentEl: -> domEl[0]
 
       domEl.css
         position: 'absolute',

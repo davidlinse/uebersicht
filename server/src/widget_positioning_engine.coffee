@@ -1,26 +1,41 @@
 DragHandler = require './drag_handler.coffee'
 Rect        = require './rectangle_math.coffee'
 
+requestAnimFrame = webkitRequestAnimationFrame ? setTimeout
+cancelAnimFrame  = webkitCancelAnimationFrame  ? clearTimeout
+
+guidesWidth = 1
+
 module.exports = (widgets) ->
   api = {}
   canvas  = null
   context = null
 
-  requestAnimFrame = webkitRequestAnimationFrame ? setTimeout
-  cancelAnimFrame  = webkitCancelAnimationFrame  ? clearTimeout
-
-  guidesWidth = 2
+  currentWidget = null
+  chromeEl = null
 
   init = ->
-    document.addEventListener 'mousedown', startPositioning
+    document.addEventListener 'mousedown', onMouseDown
     canvas  = document.createElement 'canvas'
     context = canvas.getContext("2d")
     document.body.insertBefore(canvas, document.body.firstChild)
     initCanvas()
+
+    chromeEl = document.createElement('div')
+    chromeEl.className = 'widget-chrome'
+    chromeEl.innerHTML = """
+      <div class='link top'></div>
+      <div class='link right'></div>
+      <div class='link bottom'></div>
+      <div class='link left'></div>
+    """
+    chromeEl.style.position = 'absolute'
+    document.body.appendChild chromeEl
+
     api
 
   api.destroy = ->
-    document.removeEventListener 'mousedown', startPositioning
+    document.removeEventListener 'mousedown', onMouseDown
     document.body.removeChild canvas if canvas.parentElement?
 
   api.positonWidget = (widget) ->
@@ -28,14 +43,25 @@ module.exports = (widgets) ->
     return unless frame
     widget.setFrame frame
 
-  startPositioning = (e) ->
-    return unless (el = getWidget(left: e.clientX, top: e.clientY))?
-    widget = widgets.get el.id
+  onMouseDown = (e) ->
+    widget = getWidgetAt(left: e.clientX, top: e.clientY)
+    return unless widget?
+    startPositioning widget, e
+    selectWidget(widget)
 
+  selectWidget = (widget) ->
+    oldFrame = {}
+    oldFrame = currentWidget.contentEl().getBoundingClientRect() if currentWidget?
+    frame    = widget.contentEl().getBoundingClientRect()
+
+    currentWidget = widget
+    renderChrome(oldFrame, frame)
+
+  startPositioning = (widget, e) ->
     context.fillStyle = "rgba(255, 255, 255, 0.4)"
 
     prevFrame = {}
-    handler   = DragHandler(e, el)
+    handler   = DragHandler(e, widget.contentEl())
     request   = null
 
     handler.update (frame) ->
@@ -46,59 +72,89 @@ module.exports = (widgets) ->
     handler.end ->
       cancelAnimFrame request
       storeWidgetFrame widget, slice(prevFrame, ['top', 'left', 'width', 'height'])
-      context.clearRect(0, 0, canvas.width, canvas.height)
+      renderGuides prevFrame, {} # this clears the guides
+
+  renderChrome = (prevFrame, frame) ->
+    frame = Rect.outset(frame, 2)
+    chromeEl.style.left = frame.left + 'px'
+    chromeEl.style.top  = frame.top  + 'px'
+    chromeEl.style.width  = frame.width  + 'px'
+    chromeEl.style.height = frame.height + 'px'
 
   renderDrag = (widget, prevFrame, frame) -> ->
     renderGuides prevFrame, frame
     widget.setFrame slice(frame, ['top', 'left', 'width', 'height'])
-
-    clearFrame(Rect.outset(prevFrame, 5))
-
-    context.save()
-    context.setLineDash([5])
-    context.strokeStyle = "#fff"
-    context.lineWidth   = 2
-    strokeFrame Rect.outset(frame,2)
-    context.restore()
+    renderChrome prevFrame, frame
 
   renderGuides = (prevFrame, frame) ->
+    renderGuide prevFrame, frame, 'top'
+    renderGuide prevFrame, frame, 'left'
+
+  renderGuide = (prevFrame, frame, direction) ->
+    dim = guideDimensions(prevFrame, direction)
+    rectHeight = 20
+
     oldGuideRect =
-      left  : Math.floor prevFrame.left + prevFrame.width/2 - 10
-      top   : 0
-      width : 20
-      height: prevFrame.top
-
-    clearFrame oldGuideRect
-
-    oldGuideRect =
-      left  : 0
-      top   : Math.floor prevFrame.top + prevFrame.height/2 - 10
-      width : prevFrame.left
-      height: 20
-
-    clearFrame oldGuideRect
-
-    left = frame.left+frame.width/2 - guidesWidth/2
-    top  = frame.top+frame.height/2 - guidesWidth/2
-
-    context.beginPath()
-    context.moveTo(frame.left, top)
-    context.lineTo(0,top)
-    context.moveTo(left, frame.top)
-    context.lineTo(left, 0)
+      left:   dim.start
+      top :   -rectHeight/2
+      width : dim.end
+      height: rectHeight
 
     context.save()
+    context.translate(dim.center.x, dim.center.y)
+    context.rotate(dim.angle)
+    clearFrame oldGuideRect
+    context.restore()
+
+    dim = guideDimensions(frame, direction)
+    context.save()
+    context.translate(dim.center.x, dim.center.y)
+    context.rotate(dim.angle)
+
+    context.beginPath()
+    context.moveTo(dim.start+5, 0)
+    context.lineTo(dim.end  , 0)
+    context.setLineDash?([5,2])
     context.strokeStyle = "#289ed6"
     context.lineWidth   = guidesWidth
     context.stroke()
     context.restore()
 
-  getWidget = (point) ->
+  guideDimensions = (frame, direction) ->
+    center =
+      x: frame.left + frame.width/2
+      y: frame.top  + frame.height/2
+
+    switch direction
+      when 'right'
+        angle = 0
+        start = frame.width/2
+        end   = canvas.width
+      when 'bottom'
+        angle = Math.PI/2
+        start = frame.height/2
+        end   = canvas.height
+      when 'left'
+        angle = Math.PI
+        start = frame.width/2
+        end   = canvas.width
+      when 'top'
+        angle = -Math.PI/2
+        start = frame.height/2
+        end   = canvas.height
+
+    angle: angle, start: start, end: end, center: center
+
+
+  getWidgetAt = (point) ->
+    foundEl = {}
     for widgetEl in document.getElementsByClassName('widget')
       continue unless widgetEl.id?
       if Rect.pointInRect point, widgetEl.getBoundingClientRect()
-        return widgetEl
+        foundEl = widgetEl
+        break
 
+    widgets.get foundEl.id
 
   getWidgetFrame = (widget) ->
     getLocalSettings(widget).frame

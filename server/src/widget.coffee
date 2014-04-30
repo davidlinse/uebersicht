@@ -82,6 +82,9 @@ module.exports = (implementation) ->
     contentEl.style.height = frame.height+'px' if frame.height?
     contentEl.style.margin = 0
 
+  api.contentEl = ->
+    contentEl
+
   redraw = (output, error) ->
     if error
       contentEl.innerHTML = error
