@@ -1,6 +1,10 @@
+realAnimFrame = window.webkitRequestAnimationFrame
+window.webkitRequestAnimationFrame = (animFrame) -> animFrame()
 Engine = require '../../src/widget_positioning_engine.coffee'
+window.webkitRequestAnimationFrame = realAnimFrame
 
 describe 'widget positioning engine', ->
+  localStorage.clear()
 
   describe 'dragging a widget', ->
     engine   = null

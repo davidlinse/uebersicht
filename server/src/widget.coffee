@@ -74,12 +74,12 @@ module.exports = (implementation) ->
     toSource implementation
 
   api.setFrame = (frame) ->
-    contentEl.style.top    = frame.top+'px'    if frame.top?
-    contentEl.style.right  = frame.right+'px'  if frame.right?
-    contentEl.style.bottom = frame.bottom+'px' if frame.bottom?
-    contentEl.style.left   = frame.left+'px'   if frame.left?
-    contentEl.style.width  = frame.width+'px'  if frame.width?
-    contentEl.style.height = frame.height+'px' if frame.height?
+    contentEl.style.top    = frame.top    if frame.top?
+    contentEl.style.right  = frame.right  if frame.right?
+    contentEl.style.bottom = frame.bottom if frame.bottom?
+    contentEl.style.left   = frame.left   if frame.left?
+    contentEl.style.width  = frame.width  if frame.width?
+    contentEl.style.height = frame.height if frame.height?
     contentEl.style.margin = 0
 
   api.contentEl = ->

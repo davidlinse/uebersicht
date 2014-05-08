@@ -15,6 +15,7 @@ html {
   margin: 0;
   overflow: hidden;
   -webkit-user-select: none;
+  cursor: default;
 }
 
 .widget {
@@ -28,3 +29,39 @@ html {
   box-shadow: 0 0 2px rgba(0,0,0,0.1);
   box-sizing: border-box;
 }
+
+.widget-chrome .sticky-edge {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+}
+
+.widget-chrome .sticky-edge.top,
+.widget-chrome .sticky-edge.bottom {
+  left: 50%;
+  margin-left: -5px;
+}
+
+.widget-chrome .sticky-edge.top {
+  top: -10px;
+}
+
+.widget-chrome .sticky-edge.bottom {
+  bottom: -10px;
+}
+
+.widget-chrome .sticky-edge.left,
+.widget-chrome .sticky-edge.right {
+  top: 50%;
+  margin-top: -5px;
+}
+
+.widget-chrome .sticky-edge.left {
+  left: -10px;
+}
+
+.widget-chrome .sticky-edge.right {
+  right: -10px;
+}
+

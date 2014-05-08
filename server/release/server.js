@@ -1132,7 +1132,7 @@ module.exports = function(port, widgetPath) {
 };
 
 
-},{"./changes_server.coffee":9,"./widget_command_server.coffee":14,"./widget_directory.coffee":15,"./widgets_server.coffee":18,"connect":false,"path":false}],9:[function(require,module,exports){
+},{"./changes_server.coffee":9,"./widget_command_server.coffee":14,"./widget_directory.coffee":15,"./widgets_server.coffee":19,"connect":false,"path":false}],9:[function(require,module,exports){
 var clients, currentChanges, serialize, timer;
 
 serialize = require('./serialize.coffee');
@@ -1190,7 +1190,7 @@ exports.middleware = function(req, res, next) {
 
 },{"./serialize.coffee":12}],10:[function(require,module,exports){
 module.exports = function(event, domEl) {
-  var api, currentFrame, end, endHandler, k, prevPosition, update, updateHandler, v, _ref;
+  var api, currentFrame, end, endHandler, prevPosition, update, updateHandler;
   api = {};
   updateHandler = function() {};
   endHandler = function() {};
@@ -1198,22 +1198,15 @@ module.exports = function(event, domEl) {
     x: event.pageX,
     y: event.pageY
   };
-  currentFrame = {};
-  _ref = domEl.getBoundingClientRect();
-  for (k in _ref) {
-    v = _ref[k];
-    currentFrame[k] = v;
-  }
+  currentFrame = domEl.getBoundingClientRect();
   update = function(e) {
-    var dx, dy, _ref1;
-    _ref1 = [e.pageX - prevPosition.x, e.pageY - prevPosition.y], dx = _ref1[0], dy = _ref1[1];
+    var dx, dy, _ref;
+    _ref = [e.pageX - prevPosition.x, e.pageY - prevPosition.y], dx = _ref[0], dy = _ref[1];
     prevPosition = {
       x: e.pageX,
       y: e.pageY
     };
-    currentFrame.left += dx;
-    currentFrame.top += dy;
-    return updateHandler(currentFrame);
+    return updateHandler(dx, dy);
   };
   end = function(e) {
     update(e);
@@ -1346,22 +1339,22 @@ module.exports = function(implementation) {
   };
   api.setFrame = function(frame) {
     if (frame.top != null) {
-      contentEl.style.top = frame.top + 'px';
+      contentEl.style.top = frame.top;
     }
     if (frame.right != null) {
-      contentEl.style.right = frame.right + 'px';
+      contentEl.style.right = frame.right;
     }
     if (frame.bottom != null) {
-      contentEl.style.bottom = frame.bottom + 'px';
+      contentEl.style.bottom = frame.bottom;
     }
     if (frame.left != null) {
-      contentEl.style.left = frame.left + 'px';
+      contentEl.style.left = frame.left;
     }
     if (frame.width != null) {
-      contentEl.style.width = frame.width + 'px';
+      contentEl.style.width = frame.width;
     }
     if (frame.height != null) {
-      contentEl.style.height = frame.height + 'px';
+      contentEl.style.height = frame.height;
     }
     return contentEl.style.margin = 0;
   };
@@ -1596,11 +1589,150 @@ exports.loadWidget = loadWidget = function(filePath) {
 
 
 },{"coffee-script":false,"fs":false}],17:[function(require,module,exports){
-var DragHandler, Rect, cancelAnimFrame, guidesWidth, requestAnimFrame;
+var EDGES;
+
+EDGES = ['left', 'right', 'top', 'bottom'];
+
+module.exports = function(widget) {
+  var api, cssForFrame, currentFrame, getFrame, getFrameFromDOM, getFrameFromStorage, getLocalSettings, getStickyEdges, init, slice, stickyEdges, storeLocalSettings;
+  api = {};
+  currentFrame = null;
+  stickyEdges = [];
+  init = function() {
+    currentFrame = getFrame();
+    stickyEdges = getStickyEdges();
+    return api;
+  };
+  api.domEl = function() {
+    return widget.contentEl();
+  };
+  api.render = function() {
+    if (currentFrame == null) {
+      return;
+    }
+    return widget.setFrame(cssForFrame(currentFrame));
+  };
+  api.frame = function() {
+    return currentFrame;
+  };
+  api.update = function(dx, dy) {
+    if (currentFrame == null) {
+      return;
+    }
+    currentFrame.top += dy;
+    currentFrame.bottom -= dy;
+    currentFrame.left += dx;
+    return currentFrame.right -= dx;
+  };
+  api.store = function() {
+    var settings;
+    settings = getLocalSettings();
+    settings.frame = currentFrame;
+    settings.stickyEdges = stickyEdges;
+    return storeLocalSettings(settings);
+  };
+  api.stickyEdges = function() {
+    return stickyEdges;
+  };
+  api.setStickyEdge = function(edge) {
+    if (stickyEdges.indexOf(edge) > -1) {
+      return;
+    }
+    switch (edge) {
+      case 'left':
+        stickyEdges.push('left');
+        stickyEdges = stickyEdges.filter(function(edge) {
+          return edge !== "right";
+        });
+        break;
+      case 'right':
+        stickyEdges.push('right');
+        stickyEdges = stickyEdges.filter(function(edge) {
+          return edge !== "left";
+        });
+        break;
+      case 'top':
+        stickyEdges.push('top');
+        stickyEdges = stickyEdges.filter(function(edge) {
+          return edge !== "bottom";
+        });
+        break;
+      case 'bottom':
+        stickyEdges.push('bottom');
+        stickyEdges = stickyEdges.filter(function(edge) {
+          return edge !== "top";
+        });
+    }
+    return stickyEdges;
+  };
+  cssForFrame = function(frame) {
+    var attr, _i, _len, _ref;
+    frame = slice(frame, stickyEdges.concat(['width', 'height']));
+    _ref = EDGES.concat(['width', 'height']);
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      attr = _ref[_i];
+      frame[attr] = frame[attr] != null ? frame[attr] + 'px' : 'auto';
+    }
+    return frame;
+  };
+  getFrame = function() {
+    var _ref;
+    return (_ref = getFrameFromStorage()) != null ? _ref : getFrameFromDOM();
+  };
+  getFrameFromDOM = function() {
+    var frame;
+    frame = widget.contentEl().getBoundingClientRect();
+    return {
+      top: frame.top,
+      right: window.innerWidth - frame.right,
+      bottom: window.innerHeight - frame.bottom,
+      left: frame.left,
+      width: frame.width || 'auto',
+      height: frame.height || 'auto'
+    };
+  };
+  getFrameFromStorage = function() {
+    var settings;
+    settings = getLocalSettings();
+    if (settings != null) {
+      return settings.frame;
+    }
+  };
+  getStickyEdges = function() {
+    var settings, _ref;
+    settings = getLocalSettings();
+    return (_ref = settings != null ? settings.stickyEdges : void 0) != null ? _ref : ['top', 'left'];
+  };
+  getLocalSettings = function() {
+    return JSON.parse(localStorage.getItem(widget.id) || '{}');
+  };
+  storeLocalSettings = function(settings) {
+    if (!(settings && (settings.frame != null))) {
+      return;
+    }
+    return localStorage.setItem(widget.id, JSON.stringify(settings));
+  };
+  slice = function(object, keys) {
+    var k, result, _i, _len;
+    result = {};
+    for (_i = 0, _len = keys.length; _i < _len; _i++) {
+      k = keys[_i];
+      result[k] = object[k];
+    }
+    return result;
+  };
+  return init();
+};
+
+
+},{}],18:[function(require,module,exports){
+var DragHandler, Rect, WidgetPosition, cancelAnimFrame, guidesWidth, requestAnimFrame;
 
 DragHandler = require('./drag_handler.coffee');
 
 Rect = require('./rectangle_math.coffee');
+
+WidgetPosition = require('./widget_position.coffee');
 
 requestAnimFrame = typeof webkitRequestAnimationFrame !== "undefined" && webkitRequestAnimationFrame !== null ? webkitRequestAnimationFrame : setTimeout;
 
@@ -1609,11 +1741,12 @@ cancelAnimFrame = typeof webkitCancelAnimationFrame !== "undefined" && webkitCan
 guidesWidth = 1;
 
 module.exports = function(widgets) {
-  var api, canvas, chromeEl, clearFrame, context, currentWidget, fillFrame, getLocalSettings, getWidgetAt, getWidgetFrame, guideDimensions, init, initCanvas, onMouseDown, renderChrome, renderDrag, renderGuide, renderGuides, selectWidget, slice, startPositioning, storeLocalSettings, storeWidgetFrame, strokeFrame;
+  var api, canvas, chromeEl, clearFrame, clearGuide, context, currentWidget, currentWidgetPosition, fillFrame, getWidgetAt, guideDimensions, init, initCanvas, initChrome, onMouseDown, renderChrome, renderDrag, renderGuide, renderGuides, selectWidget, startPositioning, strokeFrame;
   api = {};
   canvas = null;
   context = null;
   currentWidget = null;
+  currentWidgetPosition = null;
   chromeEl = null;
   init = function() {
     document.addEventListener('mousedown', onMouseDown);
@@ -1623,9 +1756,10 @@ module.exports = function(widgets) {
     initCanvas();
     chromeEl = document.createElement('div');
     chromeEl.className = 'widget-chrome';
-    chromeEl.innerHTML = "<div class='link top'></div>\n<div class='link right'></div>\n<div class='link bottom'></div>\n<div class='link left'></div>";
+    chromeEl.innerHTML = "<div class='sticky-edge top'></div>\n<div class='sticky-edge right'></div>\n<div class='sticky-edge bottom'></div>\n<div class='sticky-edge left'></div>";
     chromeEl.style.position = 'absolute';
     document.body.appendChild(chromeEl);
+    initChrome();
     return api;
   };
   api.destroy = function() {
@@ -1634,16 +1768,13 @@ module.exports = function(widgets) {
       return document.body.removeChild(canvas);
     }
   };
-  api.positonWidget = function(widget) {
-    var frame;
-    frame = getWidgetFrame(widget);
-    if (!frame) {
-      return;
-    }
-    return widget.setFrame(frame);
+  api.restorePosition = function(widget) {
+    var widgetPosition;
+    widgetPosition = WidgetPosition(widget);
+    return widgetPosition.render();
   };
   onMouseDown = function(e) {
-    var widget;
+    var widget, widgetPosition;
     widget = getWidgetAt({
       left: e.clientX,
       top: e.clientY
@@ -1651,40 +1782,47 @@ module.exports = function(widgets) {
     if (widget == null) {
       return;
     }
-    startPositioning(widget, e);
-    return selectWidget(widget);
+    widgetPosition = selectWidget(widget);
+    return startPositioning(widgetPosition, e);
   };
   selectWidget = function(widget) {
     var frame, oldFrame;
-    oldFrame = {};
-    if (currentWidget != null) {
-      oldFrame = currentWidget.contentEl().getBoundingClientRect();
-    }
-    frame = widget.contentEl().getBoundingClientRect();
+    oldFrame = currentWidgetPosition != null ? currentWidgetPosition.frame() : void 0;
+    currentWidgetPosition = WidgetPosition(widget);
     currentWidget = widget;
-    return renderChrome(oldFrame, frame);
+    frame = currentWidgetPosition.frame();
+    renderChrome(oldFrame, frame);
+    return currentWidgetPosition;
   };
-  startPositioning = function(widget, e) {
+  startPositioning = function(widgetPosition, e) {
     var handler, prevFrame, request;
-    context.fillStyle = "rgba(255, 255, 255, 0.4)";
-    prevFrame = {};
-    handler = DragHandler(e, widget.contentEl());
+    prevFrame = null;
+    handler = DragHandler(e, widgetPosition.domEl());
     request = null;
-    handler.update(function(frame) {
-      var k, v, _results;
-      request = requestAnimFrame(renderDrag(widget, prevFrame, frame));
+    handler.update(function(dx, dy) {
+      var k, v, _ref, _results;
+      widgetPosition.update(dx, dy);
+      request = requestAnimFrame(renderDrag(widgetPosition, prevFrame));
       prevFrame = {};
+      _ref = widgetPosition.frame();
       _results = [];
-      for (k in frame) {
-        v = frame[k];
+      for (k in _ref) {
+        v = _ref[k];
         _results.push(prevFrame[k] = v);
       }
       return _results;
     });
     return handler.end(function() {
+      var edge, _i, _len, _ref, _results;
       cancelAnimFrame(request);
-      storeWidgetFrame(widget, slice(prevFrame, ['top', 'left', 'width', 'height']));
-      return renderGuides(prevFrame, {});
+      widgetPosition.store();
+      _ref = ['top', 'right', 'bottom', 'left'];
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        edge = _ref[_i];
+        _results.push(renderGuide(prevFrame, {}, edge));
+      }
+      return _results;
     });
   };
   renderChrome = function(prevFrame, frame) {
@@ -1694,33 +1832,31 @@ module.exports = function(widgets) {
     chromeEl.style.width = frame.width + 'px';
     return chromeEl.style.height = frame.height + 'px';
   };
-  renderDrag = function(widget, prevFrame, frame) {
+  renderDrag = function(widgetPosition, prevFrame) {
     return function() {
-      renderGuides(prevFrame, frame);
-      widget.setFrame(slice(frame, ['top', 'left', 'width', 'height']));
-      return renderChrome(prevFrame, frame);
+      if (widgetPosition != null) {
+        widgetPosition.render();
+      }
+      renderGuides(widgetPosition, prevFrame);
+      return renderChrome(prevFrame, widgetPosition != null ? widgetPosition.frame() : void 0);
     };
   };
-  renderGuides = function(prevFrame, frame) {
-    renderGuide(prevFrame, frame, 'top');
-    return renderGuide(prevFrame, frame, 'left');
+  renderGuides = function(widgetPosition, prevFrame) {
+    var edge, edges, _i, _len, _results;
+    edges = widgetPosition.stickyEdges();
+    _results = [];
+    for (_i = 0, _len = edges.length; _i < _len; _i++) {
+      edge = edges[_i];
+      _results.push(renderGuide(prevFrame, widgetPosition.frame(), edge));
+    }
+    return _results;
   };
-  renderGuide = function(prevFrame, frame, direction) {
-    var dim, oldGuideRect, rectHeight;
-    dim = guideDimensions(prevFrame, direction);
-    rectHeight = 20;
-    oldGuideRect = {
-      left: dim.start,
-      top: -rectHeight / 2,
-      width: dim.end,
-      height: rectHeight
-    };
-    context.save();
-    context.translate(dim.center.x, dim.center.y);
-    context.rotate(dim.angle);
-    clearFrame(oldGuideRect);
-    context.restore();
-    dim = guideDimensions(frame, direction);
+  renderGuide = function(prevFrame, frame, edge) {
+    var dim;
+    if (prevFrame != null) {
+      clearGuide(prevFrame, edge);
+    }
+    dim = guideDimensions(frame, edge);
     context.save();
     context.translate(dim.center.x, dim.center.y);
     context.rotate(dim.angle);
@@ -1735,13 +1871,29 @@ module.exports = function(widgets) {
     context.stroke();
     return context.restore();
   };
-  guideDimensions = function(frame, direction) {
+  clearGuide = function(frame, edge) {
+    var dim, oldGuideRect, rectHeight;
+    dim = guideDimensions(frame, edge);
+    rectHeight = 20;
+    oldGuideRect = {
+      left: dim.start,
+      top: -rectHeight / 2,
+      width: dim.end,
+      height: rectHeight
+    };
+    context.save();
+    context.translate(dim.center.x, dim.center.y);
+    context.rotate(dim.angle);
+    clearFrame(oldGuideRect);
+    return context.restore();
+  };
+  guideDimensions = function(frame, edge) {
     var angle, center, end, start;
     center = {
       x: frame.left + frame.width / 2,
       y: frame.top + frame.height / 2
     };
-    switch (direction) {
+    switch (edge) {
       case 'right':
         angle = 0;
         start = frame.width / 2;
@@ -1785,27 +1937,42 @@ module.exports = function(widgets) {
     }
     return widgets.get(foundEl.id);
   };
-  getWidgetFrame = function(widget) {
-    return getLocalSettings(widget).frame;
-  };
-  storeWidgetFrame = function(widget, frame) {
-    var settings;
-    settings = getLocalSettings(widget);
-    settings.frame = frame;
-    return storeLocalSettings(widget, settings);
-  };
-  getLocalSettings = function(widget) {
-    return JSON.parse(localStorage.getItem(widget.id) || '{}');
-  };
-  storeLocalSettings = function(widget, settings) {
-    return localStorage.setItem(widget.id, JSON.stringify(settings));
-  };
   initCanvas = function() {
     canvas.style.position = 'absolute';
     canvas.style.top = 0;
     canvas.style.left = 0;
     canvas.width = window.innerWidth;
     return canvas.height = window.innerHeight;
+  };
+  initChrome = function() {
+    return chromeEl.addEventListener('click', function(e) {
+      var className, edge, _i, _j, _len, _len1, _ref, _ref1;
+      if (currentWidgetPosition == null) {
+        return true;
+      }
+      if (!e.target.classList.contains('sticky-edge')) {
+        return true;
+      }
+      e.stopPropagation();
+      _ref = e.target.classList;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        className = _ref[_i];
+        if (className === 'sticky-edge') {
+          continue;
+        }
+        currentWidgetPosition.setStickyEdge(className);
+      }
+      _ref1 = ['left', 'right', 'top', 'bottom'];
+      for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+        edge = _ref1[_j];
+        if (currentWidgetPosition.stickyEdges().indexOf(edge) > -1) {
+          renderGuide(null, currentWidgetPosition.frame(), edge);
+        } else {
+          clearGuide(currentWidgetPosition.frame(), edge);
+        }
+      }
+      return currentWidgetPosition.store();
+    });
   };
   fillFrame = function(frame) {
     return context.fillRect(frame.left, frame.top, frame.width, frame.height);
@@ -1816,20 +1983,11 @@ module.exports = function(widgets) {
   clearFrame = function(frame) {
     return context.clearRect(frame.left, frame.top, frame.width, frame.height);
   };
-  slice = function(object, keys) {
-    var k, result, _i, _len;
-    result = {};
-    for (_i = 0, _len = keys.length; _i < _len; _i++) {
-      k = keys[_i];
-      result[k] = object[k];
-    }
-    return result;
-  };
   return init();
 };
 
 
-},{"./drag_handler.coffee":10,"./rectangle_math.coffee":11}],18:[function(require,module,exports){
+},{"./drag_handler.coffee":10,"./rectangle_math.coffee":11,"./widget_position.coffee":17}],19:[function(require,module,exports){
 var serialize;
 
 serialize = require('./serialize.coffee');
@@ -1846,4 +2004,4 @@ module.exports = function(widgetDir) {
 };
 
 
-},{"./serialize.coffee":12}]},{},[7,8,9,10,11,12,13,14,15,16,17,18])
+},{"./serialize.coffee":12}]},{},[7,8,9,10,11,12,13,14,15,16,17,18,19])

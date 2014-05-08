@@ -22,24 +22,17 @@ describe 'drag handler', ->
 
   it 'should call the change handler with frame updates', ->
     currentFrame  = null
-    changeHandler = (frame) -> currentFrame = frame
+    changeHandler = jasmine.createSpy 'change handler'
 
     DragHandler({ pageX: 10, pageY: 20 }, domEl[0])
       .update changeHandler
 
-    position = getPosition()
-    expect(position.left).toBe 0
-    expect(position.top).toBe 0
-
     $(document).simulate 'mousemove', clientX: 20, clientY: 25
-    expect(currentFrame.left).toBe 10
-    expect(currentFrame.top).toBe 5
+    expect(changeHandler).toHaveBeenCalledWith 10, 5
 
     $(document).simulate 'mousemove', clientX: 20, clientY: 20
-    expect(currentFrame.left).toBe 10
-    expect(currentFrame.top).toBe 0
+    expect(changeHandler).toHaveBeenCalledWith 0, -5
 
     $(document).simulate 'mouseup', clientX: 50, clientY: 30
-    expect(currentFrame.left).toBe 40
-    expect(currentFrame.top).toBe 10
+    expect(changeHandler).toHaveBeenCalledWith 30, 10
 

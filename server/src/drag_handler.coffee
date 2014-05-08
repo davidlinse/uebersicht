@@ -8,17 +8,12 @@ module.exports = (event, domEl) ->
     x: event.pageX
     y: event.pageY
 
-  currentFrame    = {}                  # is read only
-  currentFrame[k] = v for k, v of domEl.getBoundingClientRect()
+  currentFrame = domEl.getBoundingClientRect()
 
   update = (e) ->
     [dx, dy]  = [e.pageX - prevPosition.x, e.pageY - prevPosition.y]
     prevPosition = x: e.pageX, y: e.pageY
-
-    currentFrame.left += dx
-    currentFrame.top  += dy
-
-    updateHandler currentFrame
+    updateHandler dx, dy
 
   end = (e) ->
     update(e)
