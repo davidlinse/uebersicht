@@ -43,7 +43,7 @@ module.exports = (widgets) ->
 
   api.restorePosition = (widget) ->
     widgetPosition = WidgetPosition widget
-    widgetPosition.render()
+    widgetPosition.restoreFrame()
 
   onMouseDown = (e) ->
     widget = getWidgetAt(left: e.clientX, top: e.clientY)

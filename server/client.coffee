@@ -55,9 +55,8 @@ initWidgets = (widgetSettings) ->
 
 initWidget = (widget) ->
   contentEl.appendChild widget.create()
+  positioner.restorePosition(widget)
   widget.start()
-  setTimeout ->
-    positioner.restorePosition(widget)
 
 window.reset  = destroy
 window.onload = init

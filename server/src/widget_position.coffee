@@ -7,7 +7,7 @@ module.exports = (widget) ->
   stickyEdges  = []
 
   init = ->
-    currentFrame = getFrame()
+    currentFrame = getFrameFromDOM()
     stickyEdges  = getStickyEdges()
     api
 
@@ -20,6 +20,10 @@ module.exports = (widget) ->
 
   api.frame = ->
     currentFrame
+
+  api.restoreFrame = ->
+    frame = getFrameFromStorage()
+    widget.setFrame cssForFrame(frame) if frame?
 
   api.update = (dx, dy) ->
     return unless currentFrame?
@@ -62,9 +66,6 @@ module.exports = (widget) ->
     for attr in EDGES.concat(['width', 'height'])
       frame[attr] = if frame[attr]? then frame[attr]+'px' else 'auto'
     frame
-
-  getFrame = ->
-    getFrameFromStorage() ? getFrameFromDOM()
 
   getFrameFromDOM = ->
     frame = widget.contentEl().getBoundingClientRect()

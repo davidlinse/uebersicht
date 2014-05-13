@@ -86,10 +86,8 @@ initWidgets = function(widgetSettings) {
 
 initWidget = function(widget) {
   contentEl.appendChild(widget.create());
-  widget.start();
-  return setTimeout(function() {
-    return positioner.restorePosition(widget);
-  });
+  positioner.restorePosition(widget);
+  return widget.start();
 };
 
 window.reset = destroy;
@@ -322,7 +320,7 @@ describe('widget position', function() {
     expect(frame.width).toBe(100);
     return expect(frame.height).toBe(120);
   });
-  it("retreives a widget's position from local storage", function() {
+  it("restores a widget's position from local storage", function() {
     var frame, settings;
     settings = {
       frame: {
@@ -334,11 +332,12 @@ describe('widget position', function() {
     };
     localStorage.setItem(widget.id, JSON.stringify(settings));
     widgetPosition = WidgetPosition(widget);
-    frame = widgetPosition.frame();
-    expect(frame.top).toBe(2);
-    expect(frame.left).toBe(56);
-    expect(frame.width).toBe(42);
-    return expect(frame.height).toBe(87);
+    widgetPosition.restoreFrame();
+    frame = widget.setFrame.calls[0].args[0];
+    expect(frame.top).toBe('2px');
+    expect(frame.left).toBe('56px');
+    expect(frame.width).toBe('42px');
+    return expect(frame.height).toBe('87px');
   });
   it("sets default sticky edges", function() {
     return expect(widgetPosition.stickyEdges()).toEqual(['top', 'left']);
@@ -359,7 +358,7 @@ describe('widget position', function() {
     widgetPosition = WidgetPosition(widget);
     return expect(widgetPosition.stickyEdges()).toEqual(['right', 'bottom']);
   });
-  it('sets sticky edges', function() {
+  return it('sets sticky edges', function() {
     widgetPosition.setStickyEdge('top');
     expect(widgetPosition.stickyEdges()).toEqual(['top', 'left']);
     widgetPosition.setStickyEdge('bottom');
@@ -368,54 +367,6 @@ describe('widget position', function() {
     expect(widgetPosition.stickyEdges()).toEqual(['bottom', 'right']);
     widgetPosition.setStickyEdge('garbage');
     return expect(widgetPosition.stickyEdges()).toEqual(['bottom', 'right']);
-  });
-  return describe('given a frame', function() {
-    beforeEach(function() {
-      var settings;
-      settings = {
-        frame: {
-          top: 10,
-          right: 40,
-          bottom: 23,
-          left: 30,
-          width: 100,
-          height: 100
-        }
-      };
-      localStorage.setItem(widget.id, JSON.stringify(settings));
-      return widgetPosition = WidgetPosition(widget);
-    });
-    return it('sets a widgets frame based on sticky edges', function() {
-      widgetPosition.render();
-      expect(widget.setFrame).toHaveBeenCalledWith({
-        top: '10px',
-        left: '30px',
-        width: '100px',
-        height: '100px',
-        right: 'auto',
-        bottom: 'auto'
-      });
-      widgetPosition.setStickyEdge('right');
-      widgetPosition.render();
-      expect(widget.setFrame).toHaveBeenCalledWith({
-        top: '10px',
-        right: '40px',
-        width: '100px',
-        height: '100px',
-        left: 'auto',
-        bottom: 'auto'
-      });
-      widgetPosition.setStickyEdge('bottom');
-      widgetPosition.render();
-      return expect(widget.setFrame).toHaveBeenCalledWith({
-        bottom: '23px',
-        right: '40px',
-        width: '100px',
-        height: '100px',
-        top: 'auto',
-        left: 'auto'
-      });
-    });
   });
 });
 
@@ -983,12 +934,12 @@ var EDGES;
 EDGES = ['left', 'right', 'top', 'bottom'];
 
 module.exports = function(widget) {
-  var api, cssForFrame, currentFrame, getFrame, getFrameFromDOM, getFrameFromStorage, getLocalSettings, getStickyEdges, init, slice, stickyEdges, storeLocalSettings;
+  var api, cssForFrame, currentFrame, getFrameFromDOM, getFrameFromStorage, getLocalSettings, getStickyEdges, init, slice, stickyEdges, storeLocalSettings;
   api = {};
   currentFrame = null;
   stickyEdges = [];
   init = function() {
-    currentFrame = getFrame();
+    currentFrame = getFrameFromDOM();
     stickyEdges = getStickyEdges();
     return api;
   };
@@ -1003,6 +954,13 @@ module.exports = function(widget) {
   };
   api.frame = function() {
     return currentFrame;
+  };
+  api.restoreFrame = function() {
+    var frame;
+    frame = getFrameFromStorage();
+    if (frame != null) {
+      return widget.setFrame(cssForFrame(frame));
+    }
   };
   api.update = function(dx, dy) {
     if (currentFrame == null) {
@@ -1063,10 +1021,6 @@ module.exports = function(widget) {
       frame[attr] = frame[attr] != null ? frame[attr] + 'px' : 'auto';
     }
     return frame;
-  };
-  getFrame = function() {
-    var _ref;
-    return (_ref = getFrameFromStorage()) != null ? _ref : getFrameFromDOM();
   };
   getFrameFromDOM = function() {
     var frame;
@@ -1160,7 +1114,7 @@ module.exports = function(widgets) {
   api.restorePosition = function(widget) {
     var widgetPosition;
     widgetPosition = WidgetPosition(widget);
-    return widgetPosition.render();
+    return widgetPosition.restoreFrame();
   };
   onMouseDown = function(e) {
     var widget, widgetPosition;

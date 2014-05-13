@@ -86,10 +86,8 @@ initWidgets = function(widgetSettings) {
 
 initWidget = function(widget) {
   contentEl.appendChild(widget.create());
-  widget.start();
-  return setTimeout(function() {
-    return positioner.restorePosition(widget);
-  });
+  positioner.restorePosition(widget);
+  return widget.start();
 };
 
 window.reset = destroy;
@@ -634,12 +632,12 @@ var EDGES;
 EDGES = ['left', 'right', 'top', 'bottom'];
 
 module.exports = function(widget) {
-  var api, cssForFrame, currentFrame, getFrame, getFrameFromDOM, getFrameFromStorage, getLocalSettings, getStickyEdges, init, slice, stickyEdges, storeLocalSettings;
+  var api, cssForFrame, currentFrame, getFrameFromDOM, getFrameFromStorage, getLocalSettings, getStickyEdges, init, slice, stickyEdges, storeLocalSettings;
   api = {};
   currentFrame = null;
   stickyEdges = [];
   init = function() {
-    currentFrame = getFrame();
+    currentFrame = getFrameFromDOM();
     stickyEdges = getStickyEdges();
     return api;
   };
@@ -654,6 +652,13 @@ module.exports = function(widget) {
   };
   api.frame = function() {
     return currentFrame;
+  };
+  api.restoreFrame = function() {
+    var frame;
+    frame = getFrameFromStorage();
+    if (frame != null) {
+      return widget.setFrame(cssForFrame(frame));
+    }
   };
   api.update = function(dx, dy) {
     if (currentFrame == null) {
@@ -714,10 +719,6 @@ module.exports = function(widget) {
       frame[attr] = frame[attr] != null ? frame[attr] + 'px' : 'auto';
     }
     return frame;
-  };
-  getFrame = function() {
-    var _ref;
-    return (_ref = getFrameFromStorage()) != null ? _ref : getFrameFromDOM();
   };
   getFrameFromDOM = function() {
     var frame;
@@ -811,7 +812,7 @@ module.exports = function(widgets) {
   api.restorePosition = function(widget) {
     var widgetPosition;
     widgetPosition = WidgetPosition(widget);
-    return widgetPosition.render();
+    return widgetPosition.restoreFrame();
   };
   onMouseDown = function(e) {
     var widget, widgetPosition;
