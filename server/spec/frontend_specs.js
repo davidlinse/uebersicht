@@ -358,7 +358,7 @@ describe('widget position', function() {
     widgetPosition = WidgetPosition(widget);
     return expect(widgetPosition.stickyEdges()).toEqual(['right', 'bottom']);
   });
-  return it('sets sticky edges', function() {
+  it('sets sticky edges', function() {
     widgetPosition.setStickyEdge('top');
     expect(widgetPosition.stickyEdges()).toEqual(['top', 'left']);
     widgetPosition.setStickyEdge('bottom');
@@ -367,6 +367,54 @@ describe('widget position', function() {
     expect(widgetPosition.stickyEdges()).toEqual(['bottom', 'right']);
     widgetPosition.setStickyEdge('garbage');
     return expect(widgetPosition.stickyEdges()).toEqual(['bottom', 'right']);
+  });
+  return describe('given a frame', function() {
+    beforeEach(function() {
+      var settings;
+      settings = {
+        frame: {
+          top: 10,
+          right: 40,
+          bottom: 23,
+          left: 30,
+          width: 100,
+          height: 100
+        }
+      };
+      localStorage.setItem(widget.id, JSON.stringify(settings));
+      return widgetPosition = WidgetPosition(widget);
+    });
+    return it('sets a widgets frame based on sticky edges', function() {
+      widgetPosition.restoreFrame();
+      expect(widget.setFrame).toHaveBeenCalledWith({
+        top: '10px',
+        left: '30px',
+        width: '100px',
+        height: '100px',
+        right: 'auto',
+        bottom: 'auto'
+      });
+      widgetPosition.setStickyEdge('right');
+      widgetPosition.restoreFrame();
+      expect(widget.setFrame).toHaveBeenCalledWith({
+        top: '10px',
+        right: '40px',
+        width: '100px',
+        height: '100px',
+        left: 'auto',
+        bottom: 'auto'
+      });
+      widgetPosition.setStickyEdge('bottom');
+      widgetPosition.restoreFrame();
+      return expect(widget.setFrame).toHaveBeenCalledWith({
+        bottom: '23px',
+        right: '40px',
+        width: '100px',
+        height: '100px',
+        top: 'auto',
+        left: 'auto'
+      });
+    });
   });
 });
 
