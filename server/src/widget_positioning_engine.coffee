@@ -1,11 +1,10 @@
 DragHandler    = require './drag_handler.coffee'
 Rect           = require './rectangle_math.coffee'
 WidgetPosition = require './widget_position.coffee'
+EdgeGuide      = require './edge_guide.coffee'
 
 requestAnimFrame = webkitRequestAnimationFrame ? setTimeout
 cancelAnimFrame  = webkitCancelAnimationFrame  ? clearTimeout
-
-guidesWidth = 1
 
 module.exports = (widgets) ->
   api = {}
@@ -15,6 +14,7 @@ module.exports = (widgets) ->
   currentWidget         = null
   currentWidgetPosition = null
   chromeEl = null
+  guide    = null
 
   init = ->
     document.addEventListener 'mousedown', onMouseDown
@@ -22,6 +22,8 @@ module.exports = (widgets) ->
     context = canvas.getContext("2d")
     document.body.insertBefore(canvas, document.body.firstChild)
     initCanvas()
+
+    guide = EdgeGuide(canvas, 1)
 
     chromeEl = document.createElement('div')
     chromeEl.className = 'widget-chrome'
@@ -46,6 +48,7 @@ module.exports = (widgets) ->
     widgetPosition.restoreFrame()
 
   onMouseDown = (e) ->
+    return unless e.which == 1
     widget = getWidgetAt(left: e.clientX, top: e.clientY)
     return unless widget?
     widgetPosition = selectWidget(widget)
@@ -76,7 +79,7 @@ module.exports = (widgets) ->
       cancelAnimFrame request
       widgetPosition.store()
       for edge in ['top', 'right', 'bottom', 'left']
-        renderGuide prevFrame, {}, edge # this clears the guides
+        guide.render prevFrame, {}, edge # this clears the guides
 
   renderChrome = (prevFrame, frame) ->
     frame = Rect.outset(frame, 2)
@@ -93,65 +96,7 @@ module.exports = (widgets) ->
   renderGuides = (widgetPosition, prevFrame) ->
     edges = widgetPosition.stickyEdges()
     for edge in edges
-      renderGuide prevFrame, widgetPosition.frame(), edge
-
-  renderGuide = (prevFrame, frame, edge) ->
-    clearGuide(prevFrame, edge) if prevFrame?
-
-    dim = guideDimensions(frame, edge)
-    context.save()
-    context.translate(dim.center.x, dim.center.y)
-    context.rotate(dim.angle)
-
-    context.beginPath()
-    context.moveTo(dim.start+5, 0)
-    context.lineTo(dim.end  , 0)
-    context.setLineDash?([5,2])
-    context.strokeStyle = "#289ed6"
-    context.lineWidth   = guidesWidth
-    context.stroke()
-    context.restore()
-
-  clearGuide = (frame, edge) ->
-    dim = guideDimensions(frame, edge)
-    rectHeight = 20
-
-    oldGuideRect =
-      left:   dim.start
-      top :   -rectHeight/2
-      width : dim.end
-      height: rectHeight
-
-    context.save()
-    context.translate(dim.center.x, dim.center.y)
-    context.rotate(dim.angle)
-    clearFrame oldGuideRect
-    context.restore()
-
-  guideDimensions = (frame, edge) ->
-    center =
-      x: frame.left + frame.width/2
-      y: frame.top  + frame.height/2
-
-    switch edge
-      when 'right'
-        angle = 0
-        start = frame.width/2
-        end   = canvas.width
-      when 'bottom'
-        angle = Math.PI/2
-        start = frame.height/2
-        end   = canvas.height
-      when 'left'
-        angle = Math.PI
-        start = frame.width/2
-        end   = canvas.width
-      when 'top'
-        angle = -Math.PI/2
-        start = frame.height/2
-        end   = canvas.height
-
-    angle: angle, start: start, end: end, center: center
+      guide.render prevFrame, widgetPosition.frame(), edge
 
   getWidgetAt = (point) ->
     foundEl = {}
@@ -182,20 +127,11 @@ module.exports = (widgets) ->
 
       for edge in ['left', 'right', 'top', 'bottom']
         if currentWidgetPosition.stickyEdges().indexOf(edge) > -1
-          renderGuide null, currentWidgetPosition.frame(), edge
+          guide.render null, currentWidgetPosition.frame(), edge
         else
-          clearGuide currentWidgetPosition.frame(), edge
+          guide.clear currentWidgetPosition.frame(), edge
 
       currentWidgetPosition.store()
-
-  fillFrame = (frame) ->
-    context.fillRect frame.left, frame.top, frame.width, frame.height
-
-  strokeFrame = (frame) ->
-    context.strokeRect frame.left, frame.top, frame.width, frame.height
-
-  clearFrame = (frame) ->
-    context.clearRect frame.left, frame.top, frame.width, frame.height
 
 
   init()

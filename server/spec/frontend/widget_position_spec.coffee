@@ -35,20 +35,20 @@ describe 'widget position', ->
     expect(frame.height).toBe 120
 
   it "restores a widget's position from local storage", ->
-    settings = frame: { top: 2, left: 56, width: 42, height: 87 }
+    settings = frame: { bottom: 2, left: 56, width: 42, height: 87 }
     localStorage.setItem(widget.id, JSON.stringify(settings))
 
     widgetPosition = WidgetPosition(widget)
     widgetPosition.restoreFrame()
 
     frame = widget.setFrame.calls[0].args[0]
-    expect(frame.top).toBe    '2px'
+    expect(frame.bottom).toBe    '2px'
     expect(frame.left).toBe   '56px'
     expect(frame.width).toBe  '42px'
     expect(frame.height).toBe '87px'
 
   it "sets default sticky edges", ->
-    expect(widgetPosition.stickyEdges()).toEqual ['top', 'left']
+    expect(widgetPosition.stickyEdges()).toEqual ['bottom', 'left']
 
   it "gets sticky edges from local storage", ->
     settings =
@@ -61,7 +61,7 @@ describe 'widget position', ->
 
   it 'sets sticky edges', ->
     widgetPosition.setStickyEdge('top')
-    expect(widgetPosition.stickyEdges()).toEqual ['top', 'left']
+    expect(widgetPosition.stickyEdges()).toEqual ['left', 'top']
 
     widgetPosition.setStickyEdge('bottom')
     expect(widgetPosition.stickyEdges()).toEqual ['left', 'bottom']
@@ -82,34 +82,32 @@ describe 'widget position', ->
     it 'sets a widgets frame based on sticky edges', ->
       widgetPosition.restoreFrame()
       expect(widget.setFrame).toHaveBeenCalledWith
-        top   : '10px'
+        bottom: '23px'
         left  : '30px'
         width : '100px'
-        height: '100px',
+        height: '100px'
+        top   : 'auto'
         right : 'auto'
-        bottom: 'auto'
 
       widgetPosition.setStickyEdge 'right'
-      widgetPosition.restoreFrame()
-      expect(widget.setFrame).toHaveBeenCalledWith
-        top   : '10px'
-        right : '40px'
-        width : '100px'
-        height: '100px'
-        left  : 'auto'
-        bottom: 'auto'
-
-      widgetPosition.setStickyEdge 'bottom'
       widgetPosition.restoreFrame()
       expect(widget.setFrame).toHaveBeenCalledWith
         bottom: '23px'
         right : '40px'
         width : '100px'
         height: '100px'
-        top   : 'auto'
         left  : 'auto'
+        top   : 'auto'
 
-
+      widgetPosition.setStickyEdge 'top'
+      widgetPosition.restoreFrame()
+      expect(widget.setFrame).toHaveBeenCalledWith
+        top   : '10px'
+        right : '40px'
+        width : '100px'
+        height: '100px'
+        left  : 'auto'
+        bottom: 'auto'
 
 
 
