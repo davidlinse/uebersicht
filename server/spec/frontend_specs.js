@@ -95,7 +95,7 @@ window.reset = destroy;
 window.onload = init;
 
 
-},{"./src/widget.coffee":11,"./src/widget_positioning_engine.coffee":13}],2:[function(require,module,exports){
+},{"./src/widget.coffee":12,"./src/widget_positioning_engine.coffee":14}],2:[function(require,module,exports){
 
 },{}],3:[function(require,module,exports){
 /* toSource by Marcello Bastea-Forte - zlib license */
@@ -324,7 +324,7 @@ describe('widget position', function() {
     var frame, settings;
     settings = {
       frame: {
-        top: 2,
+        bottom: 2,
         left: 56,
         width: 42,
         height: 87
@@ -334,13 +334,13 @@ describe('widget position', function() {
     widgetPosition = WidgetPosition(widget);
     widgetPosition.restoreFrame();
     frame = widget.setFrame.calls[0].args[0];
-    expect(frame.top).toBe('2px');
+    expect(frame.bottom).toBe('2px');
     expect(frame.left).toBe('56px');
     expect(frame.width).toBe('42px');
     return expect(frame.height).toBe('87px');
   });
   it("sets default sticky edges", function() {
-    return expect(widgetPosition.stickyEdges()).toEqual(['top', 'left']);
+    return expect(widgetPosition.stickyEdges()).toEqual(['bottom', 'left']);
   });
   it("gets sticky edges from local storage", function() {
     var settings;
@@ -360,7 +360,7 @@ describe('widget position', function() {
   });
   it('sets sticky edges', function() {
     widgetPosition.setStickyEdge('top');
-    expect(widgetPosition.stickyEdges()).toEqual(['top', 'left']);
+    expect(widgetPosition.stickyEdges()).toEqual(['left', 'top']);
     widgetPosition.setStickyEdge('bottom');
     expect(widgetPosition.stickyEdges()).toEqual(['left', 'bottom']);
     widgetPosition.setStickyEdge('right');
@@ -387,16 +387,26 @@ describe('widget position', function() {
     return it('sets a widgets frame based on sticky edges', function() {
       widgetPosition.restoreFrame();
       expect(widget.setFrame).toHaveBeenCalledWith({
-        top: '10px',
+        bottom: '23px',
         left: '30px',
         width: '100px',
         height: '100px',
-        right: 'auto',
-        bottom: 'auto'
+        top: 'auto',
+        right: 'auto'
       });
       widgetPosition.setStickyEdge('right');
       widgetPosition.restoreFrame();
       expect(widget.setFrame).toHaveBeenCalledWith({
+        bottom: '23px',
+        right: '40px',
+        width: '100px',
+        height: '100px',
+        left: 'auto',
+        top: 'auto'
+      });
+      widgetPosition.setStickyEdge('top');
+      widgetPosition.restoreFrame();
+      return expect(widget.setFrame).toHaveBeenCalledWith({
         top: '10px',
         right: '40px',
         width: '100px',
@@ -404,22 +414,12 @@ describe('widget position', function() {
         left: 'auto',
         bottom: 'auto'
       });
-      widgetPosition.setStickyEdge('bottom');
-      widgetPosition.restoreFrame();
-      return expect(widget.setFrame).toHaveBeenCalledWith({
-        bottom: '23px',
-        right: '40px',
-        width: '100px',
-        height: '100px',
-        top: 'auto',
-        left: 'auto'
-      });
     });
   });
 });
 
 
-},{"../../src/widget_position.coffee":12}],7:[function(require,module,exports){
+},{"../../src/widget_position.coffee":13}],7:[function(require,module,exports){
 var Engine, realAnimFrame;
 
 realAnimFrame = window.webkitRequestAnimationFrame;
@@ -495,7 +495,7 @@ describe('widget positioning engine', function() {
 });
 
 
-},{"../../src/widget_positioning_engine.coffee":13}],8:[function(require,module,exports){
+},{"../../src/widget_positioning_engine.coffee":14}],8:[function(require,module,exports){
 var Widget;
 
 Widget = require('../../src/widget.coffee');
@@ -748,7 +748,7 @@ describe('widget', function() {
 });
 
 
-},{"../../src/widget.coffee":11}],9:[function(require,module,exports){
+},{"../../src/widget.coffee":12}],9:[function(require,module,exports){
 module.exports = function(event, domEl) {
   var api, currentFrame, end, endHandler, prevPosition, update, updateHandler;
   api = {};
@@ -787,6 +787,94 @@ module.exports = function(event, domEl) {
 
 
 },{}],10:[function(require,module,exports){
+module.exports = function(canvas, width) {
+  var api, calcDimensions, clear, clearFrame, context, fillFrame, strokeFrame;
+  api = {};
+  context = canvas.getContext("2d");
+  api.render = function(prevFrame, frame, edge) {
+    var dim;
+    if (prevFrame != null) {
+      clear(prevFrame, edge);
+    }
+    dim = calcDimensions(frame, edge);
+    context.save();
+    context.translate(dim.center.x, dim.center.y);
+    context.rotate(dim.angle);
+    context.beginPath();
+    context.moveTo(dim.start + 5, 0);
+    context.lineTo(dim.end, 0);
+    if (typeof context.setLineDash === "function") {
+      context.setLineDash([5, 2]);
+    }
+    context.strokeStyle = "#289ed6";
+    context.lineWidth = width;
+    context.stroke();
+    return context.restore();
+  };
+  api.clear = clear = function(frame, edge) {
+    var dim, oldGuideRect, rectHeight;
+    dim = calcDimensions(frame, edge);
+    rectHeight = 20;
+    oldGuideRect = {
+      left: dim.start,
+      top: -rectHeight / 2,
+      width: dim.end,
+      height: rectHeight
+    };
+    context.save();
+    context.translate(dim.center.x, dim.center.y);
+    context.rotate(dim.angle);
+    clearFrame(oldGuideRect);
+    return context.restore();
+  };
+  calcDimensions = function(frame, edge) {
+    var angle, center, end, start;
+    center = {
+      x: frame.left + frame.width / 2,
+      y: frame.top + frame.height / 2
+    };
+    switch (edge) {
+      case 'right':
+        angle = 0;
+        start = frame.width / 2;
+        end = canvas.width;
+        break;
+      case 'bottom':
+        angle = Math.PI / 2;
+        start = frame.height / 2;
+        end = canvas.height;
+        break;
+      case 'left':
+        angle = Math.PI;
+        start = frame.width / 2;
+        end = canvas.width;
+        break;
+      case 'top':
+        angle = -Math.PI / 2;
+        start = frame.height / 2;
+        end = canvas.height;
+    }
+    return {
+      angle: angle,
+      start: start,
+      end: end,
+      center: center
+    };
+  };
+  fillFrame = function(frame) {
+    return context.fillRect(frame.left, frame.top, frame.width, frame.height);
+  };
+  strokeFrame = function(frame) {
+    return context.strokeRect(frame.left, frame.top, frame.width, frame.height);
+  };
+  clearFrame = function(frame) {
+    return context.clearRect(frame.left, frame.top, frame.width, frame.height);
+  };
+  return api;
+};
+
+
+},{}],11:[function(require,module,exports){
 exports.outset = function(rect, delta) {
   return {
     top: rect.top - delta,
@@ -801,7 +889,7 @@ exports.pointInRect = function(point, rect) {
 };
 
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 var exec, nib, stylus, toSource;
 
 exec = require('child_process').exec;
@@ -976,7 +1064,7 @@ module.exports = function(implementation) {
 };
 
 
-},{"child_process":2,"nib":2,"stylus":2,"tosource":3}],12:[function(require,module,exports){
+},{"child_process":2,"nib":2,"stylus":2,"tosource":3}],13:[function(require,module,exports){
 var EDGES;
 
 EDGES = ['left', 'right', 'top', 'bottom'];
@@ -1092,7 +1180,7 @@ module.exports = function(widget) {
   getStickyEdges = function() {
     var settings, _ref;
     settings = getLocalSettings();
-    return (_ref = settings != null ? settings.stickyEdges : void 0) != null ? _ref : ['top', 'left'];
+    return (_ref = settings != null ? settings.stickyEdges : void 0) != null ? _ref : ['bottom', 'left'];
   };
   getLocalSettings = function() {
     return JSON.parse(localStorage.getItem(widget.id) || '{}');
@@ -1116,8 +1204,8 @@ module.exports = function(widget) {
 };
 
 
-},{}],13:[function(require,module,exports){
-var DragHandler, Rect, WidgetPosition, cancelAnimFrame, guidesWidth, requestAnimFrame;
+},{}],14:[function(require,module,exports){
+var DragHandler, EdgeGuide, Rect, WidgetPosition, cancelAnimFrame, requestAnimFrame;
 
 DragHandler = require('./drag_handler.coffee');
 
@@ -1125,26 +1213,28 @@ Rect = require('./rectangle_math.coffee');
 
 WidgetPosition = require('./widget_position.coffee');
 
+EdgeGuide = require('./edge_guide.coffee');
+
 requestAnimFrame = typeof webkitRequestAnimationFrame !== "undefined" && webkitRequestAnimationFrame !== null ? webkitRequestAnimationFrame : setTimeout;
 
 cancelAnimFrame = typeof webkitCancelAnimationFrame !== "undefined" && webkitCancelAnimationFrame !== null ? webkitCancelAnimationFrame : clearTimeout;
 
-guidesWidth = 1;
-
 module.exports = function(widgets) {
-  var api, canvas, chromeEl, clearFrame, clearGuide, context, currentWidget, currentWidgetPosition, fillFrame, getWidgetAt, guideDimensions, init, initCanvas, initChrome, onMouseDown, renderChrome, renderDrag, renderGuide, renderGuides, selectWidget, startPositioning, strokeFrame;
+  var api, canvas, chromeEl, context, currentWidget, currentWidgetPosition, getWidgetAt, guide, init, initCanvas, initChrome, onMouseDown, renderChrome, renderDrag, renderGuides, selectWidget, startPositioning;
   api = {};
   canvas = null;
   context = null;
   currentWidget = null;
   currentWidgetPosition = null;
   chromeEl = null;
+  guide = null;
   init = function() {
     document.addEventListener('mousedown', onMouseDown);
     canvas = document.createElement('canvas');
     context = canvas.getContext("2d");
     document.body.insertBefore(canvas, document.body.firstChild);
     initCanvas();
+    guide = EdgeGuide(canvas, 1);
     chromeEl = document.createElement('div');
     chromeEl.className = 'widget-chrome';
     chromeEl.innerHTML = "<div class='sticky-edge top'></div>\n<div class='sticky-edge right'></div>\n<div class='sticky-edge bottom'></div>\n<div class='sticky-edge left'></div>";
@@ -1166,6 +1256,9 @@ module.exports = function(widgets) {
   };
   onMouseDown = function(e) {
     var widget, widgetPosition;
+    if (e.which !== 1) {
+      return;
+    }
     widget = getWidgetAt({
       left: e.clientX,
       top: e.clientY
@@ -1211,7 +1304,7 @@ module.exports = function(widgets) {
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         edge = _ref[_i];
-        _results.push(renderGuide(prevFrame, {}, edge));
+        _results.push(guide.render(prevFrame, {}, edge));
       }
       return _results;
     });
@@ -1238,79 +1331,9 @@ module.exports = function(widgets) {
     _results = [];
     for (_i = 0, _len = edges.length; _i < _len; _i++) {
       edge = edges[_i];
-      _results.push(renderGuide(prevFrame, widgetPosition.frame(), edge));
+      _results.push(guide.render(prevFrame, widgetPosition.frame(), edge));
     }
     return _results;
-  };
-  renderGuide = function(prevFrame, frame, edge) {
-    var dim;
-    if (prevFrame != null) {
-      clearGuide(prevFrame, edge);
-    }
-    dim = guideDimensions(frame, edge);
-    context.save();
-    context.translate(dim.center.x, dim.center.y);
-    context.rotate(dim.angle);
-    context.beginPath();
-    context.moveTo(dim.start + 5, 0);
-    context.lineTo(dim.end, 0);
-    if (typeof context.setLineDash === "function") {
-      context.setLineDash([5, 2]);
-    }
-    context.strokeStyle = "#289ed6";
-    context.lineWidth = guidesWidth;
-    context.stroke();
-    return context.restore();
-  };
-  clearGuide = function(frame, edge) {
-    var dim, oldGuideRect, rectHeight;
-    dim = guideDimensions(frame, edge);
-    rectHeight = 20;
-    oldGuideRect = {
-      left: dim.start,
-      top: -rectHeight / 2,
-      width: dim.end,
-      height: rectHeight
-    };
-    context.save();
-    context.translate(dim.center.x, dim.center.y);
-    context.rotate(dim.angle);
-    clearFrame(oldGuideRect);
-    return context.restore();
-  };
-  guideDimensions = function(frame, edge) {
-    var angle, center, end, start;
-    center = {
-      x: frame.left + frame.width / 2,
-      y: frame.top + frame.height / 2
-    };
-    switch (edge) {
-      case 'right':
-        angle = 0;
-        start = frame.width / 2;
-        end = canvas.width;
-        break;
-      case 'bottom':
-        angle = Math.PI / 2;
-        start = frame.height / 2;
-        end = canvas.height;
-        break;
-      case 'left':
-        angle = Math.PI;
-        start = frame.width / 2;
-        end = canvas.width;
-        break;
-      case 'top':
-        angle = -Math.PI / 2;
-        start = frame.height / 2;
-        end = canvas.height;
-    }
-    return {
-      angle: angle,
-      start: start,
-      end: end,
-      center: center
-    };
   };
   getWidgetAt = function(point) {
     var foundEl, widgetEl, _i, _len, _ref;
@@ -1357,25 +1380,16 @@ module.exports = function(widgets) {
       for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
         edge = _ref1[_j];
         if (currentWidgetPosition.stickyEdges().indexOf(edge) > -1) {
-          renderGuide(null, currentWidgetPosition.frame(), edge);
+          guide.render(null, currentWidgetPosition.frame(), edge);
         } else {
-          clearGuide(currentWidgetPosition.frame(), edge);
+          guide.clear(currentWidgetPosition.frame(), edge);
         }
       }
       return currentWidgetPosition.store();
     });
   };
-  fillFrame = function(frame) {
-    return context.fillRect(frame.left, frame.top, frame.width, frame.height);
-  };
-  strokeFrame = function(frame) {
-    return context.strokeRect(frame.left, frame.top, frame.width, frame.height);
-  };
-  clearFrame = function(frame) {
-    return context.clearRect(frame.left, frame.top, frame.width, frame.height);
-  };
   return init();
 };
 
 
-},{"./drag_handler.coffee":9,"./rectangle_math.coffee":10,"./widget_position.coffee":12}]},{},[4,5,6,7,8])
+},{"./drag_handler.coffee":9,"./edge_guide.coffee":10,"./rectangle_math.coffee":11,"./widget_position.coffee":13}]},{},[4,5,6,7,8])

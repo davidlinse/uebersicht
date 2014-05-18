@@ -82,7 +82,7 @@ module.exports = (widget) ->
 
   getStickyEdges = ->
     settings = getLocalSettings()
-    settings?.stickyEdges ? ['top', 'left']
+    settings?.stickyEdges ? ['bottom', 'left']
 
   getLocalSettings =  ->
     JSON.parse(localStorage.getItem(widget.id) or '{}')
