@@ -95,7 +95,7 @@ window.reset = destroy;
 window.onload = init;
 
 
-},{"./src/widget.coffee":9,"./src/widget_positioning_engine.coffee":14}],2:[function(require,module,exports){
+},{"./src/widget.coffee":10,"./src/widget_positioning_engine.coffee":15}],2:[function(require,module,exports){
 
 },{}],3:[function(require,module,exports){
 /* toSource by Marcello Bastea-Forte - zlib license */
@@ -170,7 +170,7 @@ module.exports = function(port, widgetPath) {
 };
 
 
-},{"./changes_server.coffee":5,"./widget_command_server.coffee":10,"./widget_directory.coffee":11,"./widgets_server.coffee":15,"connect":2,"path":2}],5:[function(require,module,exports){
+},{"./changes_server.coffee":5,"./widget_command_server.coffee":11,"./widget_directory.coffee":12,"./widgets_server.coffee":16,"connect":2,"path":2}],5:[function(require,module,exports){
 var clients, currentChanges, serialize, timer;
 
 serialize = require('./serialize.coffee');
@@ -226,7 +226,7 @@ exports.middleware = function(req, res, next) {
 };
 
 
-},{"./serialize.coffee":8}],6:[function(require,module,exports){
+},{"./serialize.coffee":9}],6:[function(require,module,exports){
 module.exports = function(event, domEl) {
   var api, currentFrame, end, endHandler, prevPosition, update, updateHandler;
   api = {};
@@ -265,6 +265,94 @@ module.exports = function(event, domEl) {
 
 
 },{}],7:[function(require,module,exports){
+module.exports = function(canvas, width) {
+  var api, calcDimensions, clear, clearFrame, context, fillFrame, strokeFrame;
+  api = {};
+  context = canvas.getContext("2d");
+  api.render = function(prevFrame, frame, edge) {
+    var dim;
+    if (prevFrame != null) {
+      clear(prevFrame, edge);
+    }
+    dim = calcDimensions(frame, edge);
+    context.save();
+    context.translate(dim.center.x, dim.center.y);
+    context.rotate(dim.angle);
+    context.beginPath();
+    context.moveTo(dim.start + 5, 0);
+    context.lineTo(dim.end, 0);
+    if (typeof context.setLineDash === "function") {
+      context.setLineDash([5, 2]);
+    }
+    context.strokeStyle = "#289ed6";
+    context.lineWidth = width;
+    context.stroke();
+    return context.restore();
+  };
+  api.clear = clear = function(frame, edge) {
+    var dim, oldGuideRect, rectHeight;
+    dim = calcDimensions(frame, edge);
+    rectHeight = 20;
+    oldGuideRect = {
+      left: dim.start,
+      top: -rectHeight / 2,
+      width: dim.end,
+      height: rectHeight
+    };
+    context.save();
+    context.translate(dim.center.x, dim.center.y);
+    context.rotate(dim.angle);
+    clearFrame(oldGuideRect);
+    return context.restore();
+  };
+  calcDimensions = function(frame, edge) {
+    var angle, center, end, start;
+    center = {
+      x: frame.left + frame.width / 2,
+      y: frame.top + frame.height / 2
+    };
+    switch (edge) {
+      case 'right':
+        angle = 0;
+        start = frame.width / 2;
+        end = canvas.width;
+        break;
+      case 'bottom':
+        angle = Math.PI / 2;
+        start = frame.height / 2;
+        end = canvas.height;
+        break;
+      case 'left':
+        angle = Math.PI;
+        start = frame.width / 2;
+        end = canvas.width;
+        break;
+      case 'top':
+        angle = -Math.PI / 2;
+        start = frame.height / 2;
+        end = canvas.height;
+    }
+    return {
+      angle: angle,
+      start: start,
+      end: end,
+      center: center
+    };
+  };
+  fillFrame = function(frame) {
+    return context.fillRect(frame.left, frame.top, frame.width, frame.height);
+  };
+  strokeFrame = function(frame) {
+    return context.strokeRect(frame.left, frame.top, frame.width, frame.height);
+  };
+  clearFrame = function(frame) {
+    return context.clearRect(frame.left, frame.top, frame.width, frame.height);
+  };
+  return api;
+};
+
+
+},{}],8:[function(require,module,exports){
 exports.outset = function(rect, delta) {
   return {
     top: rect.top - delta,
@@ -279,7 +367,7 @@ exports.pointInRect = function(point, rect) {
 };
 
 
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 module.exports = function(someWidgets) {
   var id, serialized, widget;
   serialized = "({";
@@ -295,7 +383,7 @@ module.exports = function(someWidgets) {
 };
 
 
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 var exec, nib, stylus, toSource;
 
 exec = require('child_process').exec;
@@ -470,7 +558,7 @@ module.exports = function(implementation) {
 };
 
 
-},{"child_process":2,"nib":2,"stylus":2,"tosource":3}],10:[function(require,module,exports){
+},{"child_process":2,"nib":2,"stylus":2,"tosource":3}],11:[function(require,module,exports){
 module.exports = function(widgetDir) {
   return function(req, res, next) {
     var parts, widget;
@@ -496,7 +584,7 @@ module.exports = function(widgetDir) {
 };
 
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 var Widget, loader, paths;
 
 Widget = require('./widget.coffee');
@@ -598,7 +686,7 @@ module.exports = function(directoryPath) {
 };
 
 
-},{"./widget.coffee":9,"./widget_loader.coffee":12,"chokidar":2,"path":2}],12:[function(require,module,exports){
+},{"./widget.coffee":10,"./widget_loader.coffee":13,"chokidar":2,"path":2}],13:[function(require,module,exports){
 var coffee, fs, loadWidget;
 
 fs = require('fs');
@@ -626,7 +714,7 @@ exports.loadWidget = loadWidget = function(filePath) {
 };
 
 
-},{"coffee-script":2,"fs":2}],13:[function(require,module,exports){
+},{"coffee-script":2,"fs":2}],14:[function(require,module,exports){
 var EDGES;
 
 EDGES = ['left', 'right', 'top', 'bottom'];
@@ -742,7 +830,7 @@ module.exports = function(widget) {
   getStickyEdges = function() {
     var settings, _ref;
     settings = getLocalSettings();
-    return (_ref = settings != null ? settings.stickyEdges : void 0) != null ? _ref : ['top', 'left'];
+    return (_ref = settings != null ? settings.stickyEdges : void 0) != null ? _ref : ['bottom', 'left'];
   };
   getLocalSettings = function() {
     return JSON.parse(localStorage.getItem(widget.id) || '{}');
@@ -766,8 +854,8 @@ module.exports = function(widget) {
 };
 
 
-},{}],14:[function(require,module,exports){
-var DragHandler, Rect, WidgetPosition, cancelAnimFrame, guidesWidth, requestAnimFrame;
+},{}],15:[function(require,module,exports){
+var DragHandler, EdgeGuide, Rect, WidgetPosition, cancelAnimFrame, requestAnimFrame;
 
 DragHandler = require('./drag_handler.coffee');
 
@@ -775,26 +863,28 @@ Rect = require('./rectangle_math.coffee');
 
 WidgetPosition = require('./widget_position.coffee');
 
+EdgeGuide = require('./edge_guide.coffee');
+
 requestAnimFrame = typeof webkitRequestAnimationFrame !== "undefined" && webkitRequestAnimationFrame !== null ? webkitRequestAnimationFrame : setTimeout;
 
 cancelAnimFrame = typeof webkitCancelAnimationFrame !== "undefined" && webkitCancelAnimationFrame !== null ? webkitCancelAnimationFrame : clearTimeout;
 
-guidesWidth = 1;
-
 module.exports = function(widgets) {
-  var api, canvas, chromeEl, clearFrame, clearGuide, context, currentWidget, currentWidgetPosition, fillFrame, getWidgetAt, guideDimensions, init, initCanvas, initChrome, onMouseDown, renderChrome, renderDrag, renderGuide, renderGuides, selectWidget, startPositioning, strokeFrame;
+  var api, canvas, chromeEl, context, currentWidget, currentWidgetPosition, getWidgetAt, guide, init, initCanvas, initChrome, onMouseDown, renderChrome, renderDrag, renderGuides, selectWidget, startPositioning;
   api = {};
   canvas = null;
   context = null;
   currentWidget = null;
   currentWidgetPosition = null;
   chromeEl = null;
+  guide = null;
   init = function() {
     document.addEventListener('mousedown', onMouseDown);
     canvas = document.createElement('canvas');
     context = canvas.getContext("2d");
     document.body.insertBefore(canvas, document.body.firstChild);
     initCanvas();
+    guide = EdgeGuide(canvas, 1);
     chromeEl = document.createElement('div');
     chromeEl.className = 'widget-chrome';
     chromeEl.innerHTML = "<div class='sticky-edge top'></div>\n<div class='sticky-edge right'></div>\n<div class='sticky-edge bottom'></div>\n<div class='sticky-edge left'></div>";
@@ -816,6 +906,9 @@ module.exports = function(widgets) {
   };
   onMouseDown = function(e) {
     var widget, widgetPosition;
+    if (e.which !== 1) {
+      return;
+    }
     widget = getWidgetAt({
       left: e.clientX,
       top: e.clientY
@@ -861,7 +954,7 @@ module.exports = function(widgets) {
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         edge = _ref[_i];
-        _results.push(renderGuide(prevFrame, {}, edge));
+        _results.push(guide.render(prevFrame, {}, edge));
       }
       return _results;
     });
@@ -888,79 +981,9 @@ module.exports = function(widgets) {
     _results = [];
     for (_i = 0, _len = edges.length; _i < _len; _i++) {
       edge = edges[_i];
-      _results.push(renderGuide(prevFrame, widgetPosition.frame(), edge));
+      _results.push(guide.render(prevFrame, widgetPosition.frame(), edge));
     }
     return _results;
-  };
-  renderGuide = function(prevFrame, frame, edge) {
-    var dim;
-    if (prevFrame != null) {
-      clearGuide(prevFrame, edge);
-    }
-    dim = guideDimensions(frame, edge);
-    context.save();
-    context.translate(dim.center.x, dim.center.y);
-    context.rotate(dim.angle);
-    context.beginPath();
-    context.moveTo(dim.start + 5, 0);
-    context.lineTo(dim.end, 0);
-    if (typeof context.setLineDash === "function") {
-      context.setLineDash([5, 2]);
-    }
-    context.strokeStyle = "#289ed6";
-    context.lineWidth = guidesWidth;
-    context.stroke();
-    return context.restore();
-  };
-  clearGuide = function(frame, edge) {
-    var dim, oldGuideRect, rectHeight;
-    dim = guideDimensions(frame, edge);
-    rectHeight = 20;
-    oldGuideRect = {
-      left: dim.start,
-      top: -rectHeight / 2,
-      width: dim.end,
-      height: rectHeight
-    };
-    context.save();
-    context.translate(dim.center.x, dim.center.y);
-    context.rotate(dim.angle);
-    clearFrame(oldGuideRect);
-    return context.restore();
-  };
-  guideDimensions = function(frame, edge) {
-    var angle, center, end, start;
-    center = {
-      x: frame.left + frame.width / 2,
-      y: frame.top + frame.height / 2
-    };
-    switch (edge) {
-      case 'right':
-        angle = 0;
-        start = frame.width / 2;
-        end = canvas.width;
-        break;
-      case 'bottom':
-        angle = Math.PI / 2;
-        start = frame.height / 2;
-        end = canvas.height;
-        break;
-      case 'left':
-        angle = Math.PI;
-        start = frame.width / 2;
-        end = canvas.width;
-        break;
-      case 'top':
-        angle = -Math.PI / 2;
-        start = frame.height / 2;
-        end = canvas.height;
-    }
-    return {
-      angle: angle,
-      start: start,
-      end: end,
-      center: center
-    };
   };
   getWidgetAt = function(point) {
     var foundEl, widgetEl, _i, _len, _ref;
@@ -1007,28 +1030,19 @@ module.exports = function(widgets) {
       for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
         edge = _ref1[_j];
         if (currentWidgetPosition.stickyEdges().indexOf(edge) > -1) {
-          renderGuide(null, currentWidgetPosition.frame(), edge);
+          guide.render(null, currentWidgetPosition.frame(), edge);
         } else {
-          clearGuide(currentWidgetPosition.frame(), edge);
+          guide.clear(currentWidgetPosition.frame(), edge);
         }
       }
       return currentWidgetPosition.store();
     });
   };
-  fillFrame = function(frame) {
-    return context.fillRect(frame.left, frame.top, frame.width, frame.height);
-  };
-  strokeFrame = function(frame) {
-    return context.strokeRect(frame.left, frame.top, frame.width, frame.height);
-  };
-  clearFrame = function(frame) {
-    return context.clearRect(frame.left, frame.top, frame.width, frame.height);
-  };
   return init();
 };
 
 
-},{"./drag_handler.coffee":6,"./rectangle_math.coffee":7,"./widget_position.coffee":13}],15:[function(require,module,exports){
+},{"./drag_handler.coffee":6,"./edge_guide.coffee":7,"./rectangle_math.coffee":8,"./widget_position.coffee":14}],16:[function(require,module,exports){
 var serialize;
 
 serialize = require('./serialize.coffee');
@@ -1045,4 +1059,4 @@ module.exports = function(widgetDir) {
 };
 
 
-},{"./serialize.coffee":8}]},{},[1,4,5,6,7,8,9,10,11,12,13,14,15])
+},{"./serialize.coffee":9}]},{},[1,4,5,6,7,8,9,10,11,12,13,14,15,16])

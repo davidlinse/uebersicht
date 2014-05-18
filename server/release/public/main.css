@@ -5,6 +5,13 @@ html {
   margin: 0;
   height: 100%;
   width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+* {
+  -webkit-user-select: none;
 }
 
 .content {
@@ -14,7 +21,6 @@ html {
   padding: 0;
   margin: 0;
   overflow: hidden;
-  -webkit-user-select: none;
   cursor: default;
 }
 
@@ -28,40 +34,42 @@ html {
   border: 1px solid #fff;
   box-shadow: 0 0 2px rgba(0,0,0,0.1);
   box-sizing: border-box;
+  cursor: pointer;
 }
 
 .widget-chrome .sticky-edge {
   position: absolute;
-  width: 10px;
-  height: 10px;
-  background: #fff;
+  width: 9px;
+  height: 9px;
+  border: 1px solid #fff;
+  border-radius: 100%;
 }
 
 .widget-chrome .sticky-edge.top,
 .widget-chrome .sticky-edge.bottom {
   left: 50%;
-  margin-left: -5px;
+  margin-left: -5.5px;
 }
 
 .widget-chrome .sticky-edge.top {
-  top: -10px;
+  top: -6px;
 }
 
 .widget-chrome .sticky-edge.bottom {
-  bottom: -10px;
+  bottom: -6px;
 }
 
 .widget-chrome .sticky-edge.left,
 .widget-chrome .sticky-edge.right {
   top: 50%;
-  margin-top: -5px;
+  margin-top: -5.5px;
 }
 
 .widget-chrome .sticky-edge.left {
-  left: -10px;
+  left: -6px;
 }
 
 .widget-chrome .sticky-edge.right {
-  right: -10px;
+  right: -6px;
 }
 
