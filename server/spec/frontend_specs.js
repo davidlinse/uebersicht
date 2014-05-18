@@ -95,7 +95,7 @@ window.reset = destroy;
 window.onload = init;
 
 
-},{"./src/widget.coffee":12,"./src/widget_positioning_engine.coffee":14}],2:[function(require,module,exports){
+},{"./src/widget.coffee":13,"./src/widget_positioning_engine.coffee":16}],2:[function(require,module,exports){
 
 },{}],3:[function(require,module,exports){
 /* toSource by Marcello Bastea-Forte - zlib license */
@@ -419,7 +419,7 @@ describe('widget position', function() {
 });
 
 
-},{"../../src/widget_position.coffee":13}],7:[function(require,module,exports){
+},{"../../src/widget_position.coffee":15}],7:[function(require,module,exports){
 var Engine, realAnimFrame;
 
 realAnimFrame = window.webkitRequestAnimationFrame;
@@ -495,7 +495,7 @@ describe('widget positioning engine', function() {
 });
 
 
-},{"../../src/widget_positioning_engine.coffee":14}],8:[function(require,module,exports){
+},{"../../src/widget_positioning_engine.coffee":16}],8:[function(require,module,exports){
 var Widget;
 
 Widget = require('../../src/widget.coffee');
@@ -748,7 +748,7 @@ describe('widget', function() {
 });
 
 
-},{"../../src/widget.coffee":12}],9:[function(require,module,exports){
+},{"../../src/widget.coffee":13}],9:[function(require,module,exports){
 module.exports = function(event, domEl) {
   var api, currentFrame, end, endHandler, prevPosition, update, updateHandler;
   api = {};
@@ -787,6 +787,23 @@ module.exports = function(event, domEl) {
 
 
 },{}],10:[function(require,module,exports){
+module.exports = function(context) {
+  var api;
+  api = {};
+  api.fillFrame = function(frame) {
+    return context.fillRect(frame.left, frame.top, frame.width, frame.height);
+  };
+  api.strokeFrame = function(frame) {
+    return context.strokeRect(frame.left, frame.top, frame.width, frame.height);
+  };
+  api.clearFrame = function(frame) {
+    return context.clearRect(frame.left, frame.top, frame.width, frame.height);
+  };
+  return api;
+};
+
+
+},{}],11:[function(require,module,exports){
 module.exports = function(canvas, width) {
   var api, calcDimensions, clear, clearFrame, context, fillFrame, strokeFrame;
   api = {};
@@ -874,7 +891,7 @@ module.exports = function(canvas, width) {
 };
 
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 exports.outset = function(rect, delta) {
   return {
     top: rect.top - delta,
@@ -889,7 +906,7 @@ exports.pointInRect = function(point, rect) {
 };
 
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 var exec, nib, stylus, toSource;
 
 exec = require('child_process').exec;
@@ -1064,7 +1081,83 @@ module.exports = function(implementation) {
 };
 
 
-},{"child_process":2,"nib":2,"stylus":2,"tosource":3}],13:[function(require,module,exports){
+},{"child_process":2,"nib":2,"stylus":2,"tosource":3}],14:[function(require,module,exports){
+var Rect;
+
+Rect = require('./rectangle_math.coffee');
+
+module.exports = function(canvas, actions) {
+  var api, chromeEl, context, draw, init;
+  api = {};
+  context = canvas.getContext('2d');
+  draw = require('./draw.coffee')(context);
+  chromeEl = document.createElement('div');
+  chromeEl.className = 'widget-chrome';
+  chromeEl.innerHTML = "<div class='sticky-edge top'></div>\n<div class='sticky-edge right'></div>\n<div class='sticky-edge bottom'></div>\n<div class='sticky-edge left'></div>";
+  chromeEl.style.position = 'absolute';
+  init = function() {
+    chromeEl.addEventListener('click', function(e) {
+      var className, _i, _len, _ref, _results;
+      if (!e.target.classList.contains('sticky-edge')) {
+        return true;
+      }
+      e.stopPropagation();
+      _ref = e.target.classList;
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        className = _ref[_i];
+        if (className === 'sticky-edge') {
+          continue;
+        }
+        _results.push(actions.clickedStickyEdgeToggle(className));
+      }
+      return _results;
+    });
+    return api;
+  };
+  api.render = function(prevFrame, widgetPosition) {
+    var edges, el, frame, toggleSize, _i, _len, _ref, _results;
+    if (prevFrame != null) {
+      draw.clearFrame(Rect.outset(prevFrame, 4));
+    }
+    if (widgetPosition == null) {
+      return;
+    }
+    frame = Rect.outset(widgetPosition.frame(), 1.5);
+    context.strokeStyle = "#fff";
+    context.lineWidth = 1;
+    draw.strokeFrame(frame);
+    toggleSize = 20;
+    context.clearRect(frame.left + frame.width / 2 - toggleSize / 2, frame.top - toggleSize / 2, toggleSize, toggleSize);
+    context.clearRect(frame.left + frame.width / 2 - toggleSize / 2, frame.top + frame.height - toggleSize / 2, toggleSize, toggleSize);
+    context.clearRect(frame.left - toggleSize / 2, frame.top + frame.height / 2 - toggleSize / 2, toggleSize, toggleSize);
+    context.clearRect(frame.left + frame.width - toggleSize / 2, frame.top + frame.height / 2 - toggleSize / 2, toggleSize, toggleSize);
+    frame = Rect.outset(widgetPosition.frame(), 2);
+    chromeEl.style.left = frame.left + 'px';
+    chromeEl.style.top = frame.top + 'px';
+    chromeEl.style.width = frame.width + 'px';
+    chromeEl.style.height = frame.height + 'px';
+    edges = widgetPosition.stickyEdges();
+    _ref = chromeEl.getElementsByClassName("sticky-edge");
+    _results = [];
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      el = _ref[_i];
+      if (el.classList.contains(edges[0]) || el.classList.contains(edges[1])) {
+        _results.push(el.classList.add('active'));
+      } else {
+        _results.push(el.classList.remove('active'));
+      }
+    }
+    return _results;
+  };
+  api.domEl = function() {
+    return chromeEl;
+  };
+  return init();
+};
+
+
+},{"./draw.coffee":10,"./rectangle_math.coffee":12}],15:[function(require,module,exports){
 var EDGES;
 
 EDGES = ['left', 'right', 'top', 'bottom'];
@@ -1204,7 +1297,7 @@ module.exports = function(widget) {
 };
 
 
-},{}],14:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 var DragHandler, EdgeGuide, Rect, WidgetPosition, cancelAnimFrame, requestAnimFrame;
 
 DragHandler = require('./drag_handler.coffee');
@@ -1220,10 +1313,11 @@ requestAnimFrame = typeof webkitRequestAnimationFrame !== "undefined" && webkitR
 cancelAnimFrame = typeof webkitCancelAnimationFrame !== "undefined" && webkitCancelAnimationFrame !== null ? webkitCancelAnimationFrame : clearTimeout;
 
 module.exports = function(widgets) {
-  var api, canvas, chromeEl, context, currentWidget, currentWidgetPosition, getWidgetAt, guide, init, initCanvas, initChrome, onMouseDown, renderChrome, renderDrag, renderGuides, selectWidget, startPositioning;
+  var api, canvas, chrome, chromeEl, context, currentWidget, currentWidgetPosition, getWidgetAt, guide, init, initCanvas, onMouseDown, renderDrag, renderGuides, selectWidget, setStickyEdge, startPositioning;
   api = {};
   canvas = null;
   context = null;
+  chrome = null;
   currentWidget = null;
   currentWidgetPosition = null;
   chromeEl = null;
@@ -1235,12 +1329,10 @@ module.exports = function(widgets) {
     document.body.insertBefore(canvas, document.body.firstChild);
     initCanvas();
     guide = EdgeGuide(canvas, 1);
-    chromeEl = document.createElement('div');
-    chromeEl.className = 'widget-chrome';
-    chromeEl.innerHTML = "<div class='sticky-edge top'></div>\n<div class='sticky-edge right'></div>\n<div class='sticky-edge bottom'></div>\n<div class='sticky-edge left'></div>";
-    chromeEl.style.position = 'absolute';
-    document.body.appendChild(chromeEl);
-    initChrome();
+    chrome = require('./widget_chrome.coffee')(canvas, {
+      clickedStickyEdgeToggle: setStickyEdge
+    });
+    document.body.appendChild(chrome.domEl());
     return api;
   };
   api.destroy = function() {
@@ -1270,12 +1362,9 @@ module.exports = function(widgets) {
     return startPositioning(widgetPosition, e);
   };
   selectWidget = function(widget) {
-    var frame, oldFrame;
-    oldFrame = currentWidgetPosition != null ? currentWidgetPosition.frame() : void 0;
     currentWidgetPosition = WidgetPosition(widget);
     currentWidget = widget;
-    frame = currentWidgetPosition.frame();
-    renderChrome(oldFrame, frame);
+    chrome.render(currentWidgetPosition);
     return currentWidgetPosition;
   };
   startPositioning = function(widgetPosition, e) {
@@ -1309,20 +1398,13 @@ module.exports = function(widgets) {
       return _results;
     });
   };
-  renderChrome = function(prevFrame, frame) {
-    frame = Rect.outset(frame, 2);
-    chromeEl.style.left = frame.left + 'px';
-    chromeEl.style.top = frame.top + 'px';
-    chromeEl.style.width = frame.width + 'px';
-    return chromeEl.style.height = frame.height + 'px';
-  };
   renderDrag = function(widgetPosition, prevFrame) {
     return function() {
       if (widgetPosition != null) {
         widgetPosition.render();
       }
       renderGuides(widgetPosition, prevFrame);
-      return renderChrome(prevFrame, widgetPosition != null ? widgetPosition.frame() : void 0);
+      return chrome.render(prevFrame, widgetPosition);
     };
   };
   renderGuides = function(widgetPosition, prevFrame) {
@@ -1358,38 +1440,22 @@ module.exports = function(widgets) {
     canvas.width = window.innerWidth;
     return canvas.height = window.innerHeight;
   };
-  initChrome = function() {
-    return chromeEl.addEventListener('click', function(e) {
-      var className, edge, _i, _j, _len, _len1, _ref, _ref1;
-      if (currentWidgetPosition == null) {
-        return true;
-      }
-      if (!e.target.classList.contains('sticky-edge')) {
-        return true;
-      }
-      e.stopPropagation();
-      _ref = e.target.classList;
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        className = _ref[_i];
-        if (className === 'sticky-edge') {
-          continue;
-        }
-        currentWidgetPosition.setStickyEdge(className);
-      }
-      _ref1 = ['left', 'right', 'top', 'bottom'];
-      for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-        edge = _ref1[_j];
-        if (currentWidgetPosition.stickyEdges().indexOf(edge) > -1) {
-          guide.render(null, currentWidgetPosition.frame(), edge);
-        } else {
-          guide.clear(currentWidgetPosition.frame(), edge);
-        }
-      }
-      return currentWidgetPosition.store();
-    });
+  setStickyEdge = function(newStickyEdge) {
+    var edge, _i, _len, _ref;
+    if (currentWidgetPosition == null) {
+      return;
+    }
+    _ref = currentWidgetPosition.stickyEdges();
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      edge = _ref[_i];
+      guide.clear(currentWidgetPosition.frame(), edge);
+    }
+    currentWidgetPosition.setStickyEdge(newStickyEdge);
+    chrome.render(null, currentWidgetPosition);
+    return currentWidgetPosition.store();
   };
   return init();
 };
 
 
-},{"./drag_handler.coffee":9,"./edge_guide.coffee":10,"./rectangle_math.coffee":11,"./widget_position.coffee":13}]},{},[4,5,6,7,8])
+},{"./drag_handler.coffee":9,"./edge_guide.coffee":11,"./rectangle_math.coffee":12,"./widget_chrome.coffee":14,"./widget_position.coffee":15}]},{},[4,5,6,7,8])

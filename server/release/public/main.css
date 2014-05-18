@@ -31,8 +31,7 @@ html {
 }
 
 .widget-chrome {
-  border: 1px solid #fff;
-  box-shadow: 0 0 2px rgba(0,0,0,0.1);
+  border: 1px solid transparent;
   box-sizing: border-box;
   cursor: pointer;
 }
@@ -43,6 +42,15 @@ html {
   height: 9px;
   border: 1px solid #fff;
   border-radius: 100%;
+}
+
+.widget-chrome .sticky-edge:hover {
+  background: rgba(40, 158, 214, 0.3);
+}
+
+.widget-chrome .sticky-edge.active,
+.widget-chrome .sticky-edge.active:hover {
+  background: rgba(40, 158, 214, 0.9);
 }
 
 .widget-chrome .sticky-edge.top,

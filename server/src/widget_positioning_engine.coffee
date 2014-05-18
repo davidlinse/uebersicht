@@ -10,6 +10,7 @@ module.exports = (widgets) ->
   api = {}
   canvas  = null
   context = null
+  chrome  = null
 
   currentWidget         = null
   currentWidgetPosition = null
@@ -23,19 +24,11 @@ module.exports = (widgets) ->
     document.body.insertBefore(canvas, document.body.firstChild)
     initCanvas()
 
-    guide = EdgeGuide(canvas, 1)
+    guide  = EdgeGuide(canvas, 1)
+    chrome = require('./widget_chrome.coffee') canvas,
+      clickedStickyEdgeToggle: setStickyEdge
 
-    chromeEl = document.createElement('div')
-    chromeEl.className = 'widget-chrome'
-    chromeEl.innerHTML = """
-      <div class='sticky-edge top'></div>
-      <div class='sticky-edge right'></div>
-      <div class='sticky-edge bottom'></div>
-      <div class='sticky-edge left'></div>
-    """
-    chromeEl.style.position = 'absolute'
-    document.body.appendChild chromeEl
-    initChrome()
+    document.body.appendChild chrome.domEl()
 
     api
 
@@ -55,13 +48,10 @@ module.exports = (widgets) ->
     startPositioning widgetPosition, e
 
   selectWidget = (widget) ->
-    oldFrame = currentWidgetPosition?.frame()
-
     currentWidgetPosition = WidgetPosition(widget)
     currentWidget         = widget
-    frame                 = currentWidgetPosition.frame()
 
-    renderChrome(oldFrame, frame)
+    chrome.render(currentWidgetPosition)
     currentWidgetPosition
 
   startPositioning = (widgetPosition, e) ->
@@ -81,17 +71,11 @@ module.exports = (widgets) ->
       for edge in ['top', 'right', 'bottom', 'left']
         guide.render prevFrame, {}, edge # this clears the guides
 
-  renderChrome = (prevFrame, frame) ->
-    frame = Rect.outset(frame, 2)
-    chromeEl.style.left = frame.left + 'px'
-    chromeEl.style.top  = frame.top  + 'px'
-    chromeEl.style.width  = frame.width  + 'px'
-    chromeEl.style.height = frame.height + 'px'
 
   renderDrag = (widgetPosition, prevFrame) -> ->
     widgetPosition?.render()
     renderGuides widgetPosition, prevFrame
-    renderChrome prevFrame, widgetPosition?.frame()
+    chrome.render prevFrame, widgetPosition
 
   renderGuides = (widgetPosition, prevFrame) ->
     edges = widgetPosition.stickyEdges()
@@ -108,7 +92,6 @@ module.exports = (widgets) ->
 
     widgets.get foundEl.id
 
-
   initCanvas = ->
     canvas.style.position = 'absolute'
     canvas.style.top  = 0
@@ -116,22 +99,16 @@ module.exports = (widgets) ->
     canvas.width  = window.innerWidth
     canvas.height = window.innerHeight
 
-  initChrome = ->
-    chromeEl.addEventListener 'click', (e) ->
-      return true unless currentWidgetPosition?
-      return true unless e.target.classList.contains('sticky-edge')
-      e.stopPropagation()
-      for className in e.target.classList
-        continue if className == 'sticky-edge'
-        currentWidgetPosition.setStickyEdge(className)
+  setStickyEdge = (newStickyEdge) ->
+    return unless currentWidgetPosition?
 
-      for edge in ['left', 'right', 'top', 'bottom']
-        if currentWidgetPosition.stickyEdges().indexOf(edge) > -1
-          guide.render null, currentWidgetPosition.frame(), edge
-        else
-          guide.clear currentWidgetPosition.frame(), edge
+    for edge in currentWidgetPosition.stickyEdges()
+      guide.clear currentWidgetPosition.frame(), edge
 
-      currentWidgetPosition.store()
+    currentWidgetPosition.setStickyEdge(newStickyEdge)
+
+    chrome.render null, currentWidgetPosition
+    currentWidgetPosition.store()
 
 
   init()
