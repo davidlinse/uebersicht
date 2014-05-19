@@ -61,4 +61,14 @@
 
 }
 
+- (BOOL)canBecomeMainWindow
+{
+    return YES;
+}
+
+- (BOOL)canBecomeKeyWindow
+{
+    return YES;
+}
+
 @end
