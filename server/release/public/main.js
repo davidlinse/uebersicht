@@ -997,7 +997,7 @@ module.exports = function(widgets) {
     return widgetPosition.restoreFrame();
   };
   onMouseDown = function(e) {
-    var widget, widgetPosition;
+    var widget;
     if (e.which !== 1) {
       return;
     }
@@ -1008,13 +1008,15 @@ module.exports = function(widgets) {
     if (widget == null) {
       return;
     }
-    widgetPosition = selectWidget(widget);
-    return startPositioning(widgetPosition, e);
+    selectWidget(widget);
+    return startPositioning(currentWidgetPosition, e);
   };
   selectWidget = function(widget) {
+    var prevFrame;
+    prevFrame = currentWidgetPosition != null ? currentWidgetPosition.frame() : void 0;
     currentWidgetPosition = WidgetPosition(widget);
     currentWidget = widget;
-    chrome.render(currentWidgetPosition);
+    chrome.render(prevFrame, currentWidgetPosition);
     return currentWidgetPosition;
   };
   startPositioning = function(widgetPosition, e) {

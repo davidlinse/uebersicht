@@ -44,14 +44,15 @@ module.exports = (widgets) ->
     return unless e.which == 1
     widget = getWidgetAt(left: e.clientX, top: e.clientY)
     return unless widget?
-    widgetPosition = selectWidget(widget)
-    startPositioning widgetPosition, e
+    selectWidget(widget)
+    startPositioning currentWidgetPosition, e
 
   selectWidget = (widget) ->
+    prevFrame             = currentWidgetPosition?.frame()
     currentWidgetPosition = WidgetPosition(widget)
     currentWidget         = widget
 
-    chrome.render(currentWidgetPosition)
+    chrome.render(prevFrame, currentWidgetPosition)
     currentWidgetPosition
 
   startPositioning = (widgetPosition, e) ->
