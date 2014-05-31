@@ -22,8 +22,8 @@ module.exports = (canvas, actions) ->
 
   init = ->
     chromeEl.addEventListener 'click', (e) ->
+      return true unless e.which == 1
       return true unless e.target.classList.contains('sticky-edge')
-      e.stopPropagation()
 
       for className in e.target.classList
         continue if className == 'sticky-edge'
@@ -32,7 +32,7 @@ module.exports = (canvas, actions) ->
     api.hide()
     api
 
-  api.render = (widgetPosition) ->
+  api.render = (widgetPosition, options = {}) ->
     chromeEl.style.display = 'block'
     clearFrame prevFrame
     return unless widgetPosition?
@@ -58,7 +58,7 @@ module.exports = (canvas, actions) ->
       else
         el.classList.remove 'active'
 
-    renderGuides(widgetPosition)
+    renderGuides(widgetPosition) unless options?.guides == false
 
     prevFrame = Rect.clone(newFrame)
 

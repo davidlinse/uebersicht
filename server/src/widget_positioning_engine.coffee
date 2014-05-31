@@ -14,7 +14,6 @@ module.exports = (widgets) ->
 
   currentWidget         = null
   currentWidgetPosition = null
-  chromeEl = null
   guide    = null
 
   init = ->
@@ -40,7 +39,8 @@ module.exports = (widgets) ->
     widgetPosition.restoreFrame()
 
   onMouseDown = (e) ->
-    return unless e.which == 1
+    return true unless e.which == 1
+    return true if chrome.domEl().contains(e.target)
     widget = getWidgetAt(left: e.clientX, top: e.clientY)
 
     if widget?
@@ -50,11 +50,11 @@ module.exports = (widgets) ->
       deselectWidget()
 
   selectWidget = (widget) ->
+    return if widget == currentWidget
     currentWidgetPosition = WidgetPosition(widget)
     currentWidget         = widget
 
-    chrome.render(currentWidgetPosition)
-    currentWidgetPosition
+    chrome.render(currentWidgetPosition, guides: false)
 
   deselectWidget = ->
     return unless currentWidget

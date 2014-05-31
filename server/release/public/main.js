@@ -606,10 +606,12 @@ module.exports = function(canvas, actions) {
   init = function() {
     chromeEl.addEventListener('click', function(e) {
       var className, _i, _len, _ref, _results;
+      if (e.which !== 1) {
+        return true;
+      }
       if (!e.target.classList.contains('sticky-edge')) {
         return true;
       }
-      e.stopPropagation();
       _ref = e.target.classList;
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -624,8 +626,11 @@ module.exports = function(canvas, actions) {
     api.hide();
     return api;
   };
-  api.render = function(widgetPosition) {
+  api.render = function(widgetPosition, options) {
     var edges, el, frame, newFrame, _i, _len, _ref;
+    if (options == null) {
+      options = {};
+    }
     chromeEl.style.display = 'block';
     clearFrame(prevFrame);
     if (widgetPosition == null) {
@@ -652,7 +657,9 @@ module.exports = function(canvas, actions) {
         el.classList.remove('active');
       }
     }
-    renderGuides(widgetPosition);
+    if ((options != null ? options.guides : void 0) !== false) {
+      renderGuides(widgetPosition);
+    }
     return prevFrame = Rect.clone(newFrame);
   };
   renderGuides = function(widgetPosition) {
@@ -1015,14 +1022,13 @@ requestAnimFrame = typeof webkitRequestAnimationFrame !== "undefined" && webkitR
 cancelAnimFrame = typeof webkitCancelAnimationFrame !== "undefined" && webkitCancelAnimationFrame !== null ? webkitCancelAnimationFrame : clearTimeout;
 
 module.exports = function(widgets) {
-  var api, canvas, chrome, chromeEl, context, currentWidget, currentWidgetPosition, deselectWidget, getWidgetAt, guide, init, initCanvas, onMouseDown, renderDrag, selectWidget, setStickyEdge, startPositioning;
+  var api, canvas, chrome, context, currentWidget, currentWidgetPosition, deselectWidget, getWidgetAt, guide, init, initCanvas, onMouseDown, renderDrag, selectWidget, setStickyEdge, startPositioning;
   api = {};
   canvas = null;
   context = null;
   chrome = null;
   currentWidget = null;
   currentWidgetPosition = null;
-  chromeEl = null;
   guide = null;
   init = function() {
     document.addEventListener('mousedown', onMouseDown);
@@ -1050,7 +1056,10 @@ module.exports = function(widgets) {
   onMouseDown = function(e) {
     var widget;
     if (e.which !== 1) {
-      return;
+      return true;
+    }
+    if (chrome.domEl().contains(e.target)) {
+      return true;
     }
     widget = getWidgetAt({
       left: e.clientX,
@@ -1064,10 +1073,14 @@ module.exports = function(widgets) {
     }
   };
   selectWidget = function(widget) {
+    if (widget === currentWidget) {
+      return;
+    }
     currentWidgetPosition = WidgetPosition(widget);
     currentWidget = widget;
-    chrome.render(currentWidgetPosition);
-    return currentWidgetPosition;
+    return chrome.render(currentWidgetPosition, {
+      guides: false
+    });
   };
   deselectWidget = function() {
     if (!currentWidget) {

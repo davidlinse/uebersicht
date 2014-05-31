@@ -33,6 +33,7 @@ html {
 .widget-chrome {
   border: 1px solid transparent;
   box-sizing: border-box;
+  pointer-events: none;
 }
 
 .widget-chrome .sticky-edge {
@@ -42,6 +43,7 @@ html {
   border: 1px solid #fff;
   border-radius: 100%;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .widget-chrome .sticky-edge:hover {
