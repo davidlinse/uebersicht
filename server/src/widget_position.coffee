@@ -22,7 +22,10 @@ module.exports = (widget) ->
     currentFrame
 
   api.restoreFrame = ->
-    frame = getFrameFromStorage()
+    frame     = getFrameFromStorage() ? {}
+    meassured = getFrameFromDOM()
+    frame.width  = meassured.width
+    frame.height = meassured.height
     widget.setFrame cssForFrame(frame) if frame?
 
   api.update = (dx, dy) ->

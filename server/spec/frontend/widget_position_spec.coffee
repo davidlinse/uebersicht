@@ -44,8 +44,9 @@ describe 'widget position', ->
     frame = widget.setFrame.calls[0].args[0]
     expect(frame.bottom).toBe    '2px'
     expect(frame.left).toBe   '56px'
-    expect(frame.width).toBe  '42px'
-    expect(frame.height).toBe '87px'
+    # these should come from dom
+    expect(frame.width).toBe  '100px'
+    expect(frame.height).toBe '120px'
 
   it "sets default sticky edges", ->
     expect(widgetPosition.stickyEdges()).toEqual ['bottom', 'left']
@@ -85,7 +86,7 @@ describe 'widget position', ->
         bottom: '23px'
         left  : '30px'
         width : '100px'
-        height: '100px'
+        height: '120px'
         top   : 'auto'
         right : 'auto'
 
@@ -95,7 +96,7 @@ describe 'widget position', ->
         bottom: '23px'
         right : '40px'
         width : '100px'
-        height: '100px'
+        height: '120px'
         left  : 'auto'
         top   : 'auto'
 
@@ -105,7 +106,7 @@ describe 'widget position', ->
         top   : '10px'
         right : '40px'
         width : '100px'
-        height: '100px'
+        height: '120px'
         left  : 'auto'
         bottom: 'auto'
 

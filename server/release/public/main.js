@@ -886,8 +886,11 @@ module.exports = function(widget) {
     return currentFrame;
   };
   api.restoreFrame = function() {
-    var frame;
-    frame = getFrameFromStorage();
+    var frame, meassured, _ref;
+    frame = (_ref = getFrameFromStorage()) != null ? _ref : {};
+    meassured = getFrameFromDOM();
+    frame.width = meassured.width;
+    frame.height = meassured.height;
     if (frame != null) {
       return widget.setFrame(cssForFrame(frame));
     }

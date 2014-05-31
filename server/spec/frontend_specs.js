@@ -336,8 +336,8 @@ describe('widget position', function() {
     frame = widget.setFrame.calls[0].args[0];
     expect(frame.bottom).toBe('2px');
     expect(frame.left).toBe('56px');
-    expect(frame.width).toBe('42px');
-    return expect(frame.height).toBe('87px');
+    expect(frame.width).toBe('100px');
+    return expect(frame.height).toBe('120px');
   });
   it("sets default sticky edges", function() {
     return expect(widgetPosition.stickyEdges()).toEqual(['bottom', 'left']);
@@ -390,7 +390,7 @@ describe('widget position', function() {
         bottom: '23px',
         left: '30px',
         width: '100px',
-        height: '100px',
+        height: '120px',
         top: 'auto',
         right: 'auto'
       });
@@ -400,7 +400,7 @@ describe('widget position', function() {
         bottom: '23px',
         right: '40px',
         width: '100px',
-        height: '100px',
+        height: '120px',
         left: 'auto',
         top: 'auto'
       });
@@ -410,7 +410,7 @@ describe('widget position', function() {
         top: '10px',
         right: '40px',
         width: '100px',
-        height: '100px',
+        height: '120px',
         left: 'auto',
         bottom: 'auto'
       });
@@ -1236,8 +1236,11 @@ module.exports = function(widget) {
     return currentFrame;
   };
   api.restoreFrame = function() {
-    var frame;
-    frame = getFrameFromStorage();
+    var frame, meassured, _ref;
+    frame = (_ref = getFrameFromStorage()) != null ? _ref : {};
+    meassured = getFrameFromDOM();
+    frame.width = meassured.width;
+    frame.height = meassured.height;
     if (frame != null) {
       return widget.setFrame(cssForFrame(frame));
     }
