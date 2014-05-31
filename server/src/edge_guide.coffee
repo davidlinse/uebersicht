@@ -3,8 +3,15 @@ module.exports = (canvas, width) ->
 
   context = canvas.getContext("2d")
 
-  api.render = (prevFrame, frame, edge) ->
-    clear(prevFrame, edge) if prevFrame?
+  api.render = (frame, edge) ->
+    if edge == 'center-x'
+      api.render frame, 'left'
+      api.render frame, 'right'
+      return
+    else if edge == 'center-y'
+      api.render frame, 'top'
+      api.render frame, 'bottom'
+      return
 
     dim = calcDimensions(frame, edge)
     context.save()
@@ -21,6 +28,15 @@ module.exports = (canvas, width) ->
     context.restore()
 
   api.clear = clear = (frame, edge) ->
+    if edge == 'center-x'
+      clear frame, 'left'
+      clear frame, 'right'
+      return
+    else if edge == 'center-y'
+      clear frame, 'top'
+      clear frame, 'bottom'
+      return
+
     dim = calcDimensions(frame, edge)
     rectHeight = 20
 

@@ -1,5 +1,3 @@
-EDGES = ['left', 'right', 'top', 'bottom', 'center-x', 'center-y']
-
 module.exports = (widget) ->
   api = {}
 
@@ -88,8 +86,6 @@ module.exports = (widget) ->
 
   cssForFrame = (frame) ->
     css = {}
-    css.width  = if frame.width?  then frame.width  + 'px' else 'auto'
-    css.height = if frame.height? then frame.height + 'px' else 'auto'
 
     if stickyEdges.indexOf('left') > -1 or stickyEdges.indexOf('center-x') > -1
       css.left  = frame.left+'px'

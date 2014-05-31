@@ -60,14 +60,14 @@ module.exports = (widgets) ->
 
     handler.update (dx, dy) ->
       widget.position.update dx, dy
-      request = requestAnimFrame renderDrag(widget)
+      request = requestAnimFrame render(widget)
 
     handler.end ->
       cancelAnimFrame request
       widget.position.store()
       requestAnimFrame -> chrome.clearGuides()
 
-  renderDrag = (widget) -> ->
+  render = (widget) -> ->
     widget?.position.render()
     chrome.render widget
 
@@ -92,9 +92,8 @@ module.exports = (widgets) ->
     return unless currentWidget?
 
     currentWidget.position.setStickyEdge(newStickyEdge)
-    currentWidget.position.render()
-    chrome.render currentWidget
     currentWidget.position.store()
+    requestAnimFrame render(currentWidget)
 
 
   init()

@@ -285,10 +285,16 @@ module.exports = function(canvas, width) {
   var api, calcDimensions, clear, clearFrame, context, fillFrame, strokeFrame;
   api = {};
   context = canvas.getContext("2d");
-  api.render = function(prevFrame, frame, edge) {
+  api.render = function(frame, edge) {
     var dim;
-    if (prevFrame != null) {
-      clear(prevFrame, edge);
+    if (edge === 'center-x') {
+      api.render(frame, 'left');
+      api.render(frame, 'right');
+      return;
+    } else if (edge === 'center-y') {
+      api.render(frame, 'top');
+      api.render(frame, 'bottom');
+      return;
     }
     dim = calcDimensions(frame, edge);
     context.save();
@@ -307,6 +313,15 @@ module.exports = function(canvas, width) {
   };
   api.clear = clear = function(frame, edge) {
     var dim, oldGuideRect, rectHeight;
+    if (edge === 'center-x') {
+      clear(frame, 'left');
+      clear(frame, 'right');
+      return;
+    } else if (edge === 'center-y') {
+      clear(frame, 'top');
+      clear(frame, 'bottom');
+      return;
+    }
     dim = calcDimensions(frame, edge);
     rectHeight = 20;
     oldGuideRect = {
@@ -505,12 +520,6 @@ module.exports = function(implementation) {
     if (frame.left != null) {
       contentEl.style.left = frame.left;
     }
-    if (frame.width != null) {
-      contentEl.style.width = frame.width;
-    }
-    if (frame.height != null) {
-      contentEl.style.height = frame.height;
-    }
     return contentEl.style.margin = 0;
   };
   api.contentEl = function() {
@@ -589,11 +598,13 @@ module.exports = function(implementation) {
 
 
 },{"./widget_position.coffee":16,"child_process":2,"nib":2,"stylus":2,"tosource":3}],12:[function(require,module,exports){
-var EdgeGuide, Rect;
+var EDGES, EdgeGuide, Rect;
 
 Rect = require('./rectangle_math.coffee');
 
 EdgeGuide = require('./edge_guide.coffee');
+
+EDGES = ['left', 'right', 'top', 'bottom', 'center-x', 'center-y'];
 
 module.exports = function(canvas, actions) {
   var api, chromeEl, clearFrame, context, cutoutToggles, draw, guide, init, prevFrame, renderGuides;
@@ -666,25 +677,30 @@ module.exports = function(canvas, actions) {
     return prevFrame = Rect.clone(newFrame);
   };
   renderGuides = function(widget) {
-    var edge, edges, _i, _len, _results;
-    edges = widget.position.stickyEdges();
+    var edge, _i, _len, _results;
     _results = [];
-    for (_i = 0, _len = edges.length; _i < _len; _i++) {
-      edge = edges[_i];
-      _results.push(guide.render(prevFrame, widget.position.frame(), edge));
+    for (_i = 0, _len = EDGES.length; _i < _len; _i++) {
+      edge = EDGES[_i];
+      if ((prevFrame != null) && edge !== 'center-x' && edge !== 'center-y') {
+        guide.clear(prevFrame, edge);
+      }
+      if (widget.position.stickyEdges().indexOf(edge) > -1) {
+        _results.push(guide.render(widget.position.frame(), edge));
+      } else {
+        _results.push(void 0);
+      }
     }
     return _results;
   };
   api.clearGuides = function() {
-    var edge, _i, _len, _ref, _results;
+    var edge, _i, _len, _results;
     if (prevFrame == null) {
       return;
     }
-    _ref = ['top', 'right', 'bottom', 'left'];
     _results = [];
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      edge = _ref[_i];
-      _results.push(guide.render(prevFrame, {}, edge));
+    for (_i = 0, _len = EDGES.length; _i < _len; _i++) {
+      edge = EDGES[_i];
+      _results.push(guide.clear(prevFrame, edge));
     }
     return _results;
   };
@@ -869,10 +885,6 @@ exports.loadWidget = loadWidget = function(filePath) {
 
 
 },{"coffee-script":2,"fs":2}],16:[function(require,module,exports){
-var EDGES;
-
-EDGES = ['left', 'right', 'top', 'bottom', 'center-x', 'center-y'];
-
 module.exports = function(widget) {
   var api, centerHorizontaly, centerVerticaly, cssForFrame, currentFrame, getFrameFromDOM, getFrameFromStorage, getLocalSettings, getStickyEdges, init, stickyEdges, storeLocalSettings;
   api = {};
@@ -997,8 +1009,6 @@ module.exports = function(widget) {
   cssForFrame = function(frame) {
     var css;
     css = {};
-    css.width = frame.width != null ? frame.width + 'px' : 'auto';
-    css.height = frame.height != null ? frame.height + 'px' : 'auto';
     if (stickyEdges.indexOf('left') > -1 || stickyEdges.indexOf('center-x') > -1) {
       css.left = frame.left + 'px';
       css.right = 'auto';
@@ -1076,7 +1086,7 @@ requestAnimFrame = typeof webkitRequestAnimationFrame !== "undefined" && webkitR
 cancelAnimFrame = typeof webkitCancelAnimationFrame !== "undefined" && webkitCancelAnimationFrame !== null ? webkitCancelAnimationFrame : clearTimeout;
 
 module.exports = function(widgets) {
-  var api, canvas, chrome, context, currentWidget, deselectWidget, getWidgetAt, guide, init, initCanvas, onMouseDown, renderDrag, selectWidget, setStickyEdge, startPositioning;
+  var api, canvas, chrome, context, currentWidget, deselectWidget, getWidgetAt, guide, init, initCanvas, onMouseDown, render, selectWidget, setStickyEdge, startPositioning;
   api = {};
   canvas = null;
   context = null;
@@ -1142,7 +1152,7 @@ module.exports = function(widgets) {
     request = null;
     handler.update(function(dx, dy) {
       widget.position.update(dx, dy);
-      return request = requestAnimFrame(renderDrag(widget));
+      return request = requestAnimFrame(render(widget));
     });
     return handler.end(function() {
       cancelAnimFrame(request);
@@ -1152,7 +1162,7 @@ module.exports = function(widgets) {
       });
     });
   };
-  renderDrag = function(widget) {
+  render = function(widget) {
     return function() {
       if (widget != null) {
         widget.position.render();
@@ -1188,9 +1198,8 @@ module.exports = function(widgets) {
       return;
     }
     currentWidget.position.setStickyEdge(newStickyEdge);
-    currentWidget.position.render();
-    chrome.render(currentWidget);
-    return currentWidget.position.store();
+    currentWidget.position.store();
+    return requestAnimFrame(render(currentWidget));
   };
   return init();
 };

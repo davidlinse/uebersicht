@@ -81,8 +81,6 @@ module.exports = (implementation) ->
     contentEl.style.right  = frame.right  if frame.right?
     contentEl.style.bottom = frame.bottom if frame.bottom?
     contentEl.style.left   = frame.left   if frame.left?
-    contentEl.style.width  = frame.width  if frame.width?
-    contentEl.style.height = frame.height if frame.height?
     contentEl.style.margin = 0
 
   api.contentEl = ->
@@ -114,6 +112,7 @@ module.exports = (implementation) ->
         return unless started
         timer = setTimeout refresh, api.refreshFrequency
         api.position.restoreFrame()
+
 
   parseStyle = (style) ->
     return "" unless style
