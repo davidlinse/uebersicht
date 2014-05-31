@@ -100,11 +100,7 @@ module.exports = (widgets) ->
   setStickyEdge = (newStickyEdge) ->
     return unless currentWidgetPosition?
 
-    for edge in currentWidgetPosition.stickyEdges()
-      guide.clear currentWidgetPosition.frame(), edge
-
     currentWidgetPosition.setStickyEdge(newStickyEdge)
-
     chrome.render currentWidgetPosition
     currentWidgetPosition.store()
 

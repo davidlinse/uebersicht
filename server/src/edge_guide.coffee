@@ -12,9 +12,9 @@ module.exports = (canvas, width) ->
     context.rotate(dim.angle)
 
     context.beginPath()
-    context.moveTo(dim.start+5, 0)
-    context.lineTo(dim.end  , 0)
-    context.setLineDash?([5,2])
+    context.moveTo(dim.start+5, 0.5)
+    context.lineTo(dim.end    , 0.5)
+    context.setLineDash?([10, 4 ,4, 4])
     context.strokeStyle = "#289ed6"
     context.lineWidth   = width
     context.stroke()

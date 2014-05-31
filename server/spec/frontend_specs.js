@@ -818,10 +818,10 @@ module.exports = function(canvas, width) {
     context.translate(dim.center.x, dim.center.y);
     context.rotate(dim.angle);
     context.beginPath();
-    context.moveTo(dim.start + 5, 0);
-    context.lineTo(dim.end, 0);
+    context.moveTo(dim.start + 5, 0.5);
+    context.lineTo(dim.end, 0.5);
     if (typeof context.setLineDash === "function") {
-      context.setLineDash([5, 2]);
+      context.setLineDash([10, 4, 4, 4]);
     }
     context.strokeStyle = "#289ed6";
     context.lineWidth = width;
@@ -1475,14 +1475,8 @@ module.exports = function(widgets) {
     return canvas.height = window.innerHeight;
   };
   setStickyEdge = function(newStickyEdge) {
-    var edge, _i, _len, _ref;
     if (currentWidgetPosition == null) {
       return;
-    }
-    _ref = currentWidgetPosition.stickyEdges();
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      edge = _ref[_i];
-      guide.clear(currentWidgetPosition.frame(), edge);
     }
     currentWidgetPosition.setStickyEdge(newStickyEdge);
     chrome.render(currentWidgetPosition);
