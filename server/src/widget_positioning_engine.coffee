@@ -74,7 +74,7 @@ module.exports = (widgets) ->
     handler.end ->
       cancelAnimFrame request
       widgetPosition.store()
-      chrome.clearGuides()
+      requestAnimFrame -> chrome.clearGuides()
 
   renderDrag = (widgetPosition) -> ->
     widgetPosition?.render()

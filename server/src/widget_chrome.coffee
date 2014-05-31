@@ -29,7 +29,6 @@ module.exports = (canvas, actions) ->
         continue if className == 'sticky-edge'
         actions.clickedStickyEdgeToggle className
 
-
     api.hide()
     api
 
@@ -84,7 +83,9 @@ module.exports = (canvas, actions) ->
 
   api.hide = ->
     clearFrame prevFrame
+    api.clearGuides()
     chromeEl.style.display = 'none'
+    prevFrame = null
 
   clearFrame = (frame) ->
     draw.clearFrame Rect.outset(frame, 5) if frame?

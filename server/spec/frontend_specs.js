@@ -1195,7 +1195,9 @@ module.exports = function(canvas, actions) {
   };
   api.hide = function() {
     clearFrame(prevFrame);
-    return chromeEl.style.display = 'none';
+    api.clearGuides();
+    chromeEl.style.display = 'none';
+    return prevFrame = null;
   };
   clearFrame = function(frame) {
     if (frame != null) {
@@ -1433,7 +1435,9 @@ module.exports = function(widgets) {
     return handler.end(function() {
       cancelAnimFrame(request);
       widgetPosition.store();
-      return chrome.clearGuides();
+      return requestAnimFrame(function() {
+        return chrome.clearGuides();
+      });
     });
   };
   renderDrag = function(widgetPosition) {
