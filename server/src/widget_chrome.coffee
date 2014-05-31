@@ -17,6 +17,8 @@ module.exports = (canvas, actions) ->
     <div class='sticky-edge right'></div>
     <div class='sticky-edge bottom'></div>
     <div class='sticky-edge left'></div>
+    <div class='sticky-edge center-x'></div>
+    <div class='sticky-edge center-y'></div>
   """
   chromeEl.style.position = 'absolute'
 
@@ -32,12 +34,12 @@ module.exports = (canvas, actions) ->
     api.hide()
     api
 
-  api.render = (widgetPosition, options = {}) ->
+  api.render = (widget, options = {}) ->
     chromeEl.style.display = 'block'
     clearFrame prevFrame
-    return unless widgetPosition?
+    return unless widget?.position?
 
-    newFrame = widgetPosition.frame()
+    newFrame = widget.position.frame()
 
     frame = Rect.outset(newFrame, 1.5)
     context.strokeStyle = "#fff"
@@ -51,21 +53,21 @@ module.exports = (canvas, actions) ->
     chromeEl.style.width  = frame.width  + 'px'
     chromeEl.style.height = frame.height + 'px'
 
-    edges = widgetPosition.stickyEdges()
+    edges = widget.position.stickyEdges()
     for el in chromeEl.getElementsByClassName("sticky-edge")
       if el.classList.contains(edges[0]) or el.classList.contains(edges[1])
         el.classList.add 'active'
       else
         el.classList.remove 'active'
 
-    renderGuides(widgetPosition) unless options?.guides == false
+    renderGuides(widget) unless options?.guides == false
 
     prevFrame = Rect.clone(newFrame)
 
-  renderGuides = (widgetPosition) ->
-    edges = widgetPosition.stickyEdges()
+  renderGuides = (widget) ->
+    edges = widget.position.stickyEdges()
     for edge in edges
-      guide.render prevFrame, widgetPosition.frame(), edge
+      guide.render prevFrame, widget.position.frame(), edge
 
   api.clearGuides = ->
     return unless prevFrame?

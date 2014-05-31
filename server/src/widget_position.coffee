@@ -1,4 +1,4 @@
-EDGES = ['left', 'right', 'top', 'bottom']
+EDGES = ['left', 'right', 'top', 'bottom', 'center-x', 'center-y']
 
 module.exports = (widget) ->
   api = {}
@@ -22,18 +22,32 @@ module.exports = (widget) ->
     currentFrame
 
   api.restoreFrame = ->
-    frame     = getFrameFromStorage() ? {}
-    meassured = getFrameFromDOM()
+    meassured    = getFrameFromDOM()
+    frame        = getFrameFromStorage() ? meassured
+    stickyEdges ?= getStickyEdges()
+
     frame.width  = meassured.width
     frame.height = meassured.height
+
+    if stickyEdges.indexOf('center-x') > -1
+      centerHorizontaly(frame)
+
+    if stickyEdges.indexOf('center-y') > -1
+      centerVerticaly(frame)
+
+    currentFrame = frame
+
     widget.setFrame cssForFrame(frame) if frame?
 
   api.update = (dx, dy) ->
     return unless currentFrame?
-    currentFrame.top    += dy
-    currentFrame.bottom -= dy
-    currentFrame.left   += dx
-    currentFrame.right  -= dx
+    centerHorizontal = stickyEdges.indexOf('center-x') > -1
+    centerVertical   = stickyEdges.indexOf('center-y') > -1
+
+    currentFrame.top    += dy unless centerVertical
+    currentFrame.bottom -= dy unless centerVertical
+    currentFrame.left   += dx unless centerHorizontal
+    currentFrame.right  -= dx unless centerHorizontal
 
   api.store = ->
     settings = getLocalSettings()
@@ -50,34 +64,57 @@ module.exports = (widget) ->
     switch edge
       when 'left'
         stickyEdges.push('left')
-        stickyEdges = stickyEdges.filter (edge) -> edge isnt "right"
+        stickyEdges = stickyEdges.filter (edge) -> edge isnt "right" and edge isnt 'center-x'
       when 'right'
         stickyEdges.push('right')
-        stickyEdges = stickyEdges.filter (edge) -> edge isnt "left"
+        stickyEdges = stickyEdges.filter (edge) -> edge isnt "left"  and edge isnt 'center-x'
       when 'top'
         stickyEdges.push('top')
-        stickyEdges = stickyEdges.filter (edge) -> edge isnt "bottom"
+        stickyEdges = stickyEdges.filter (edge) -> edge isnt "bottom" and edge isnt 'center-y'
       when 'bottom'
         stickyEdges.push('bottom')
-        stickyEdges = stickyEdges.filter (edge) -> edge isnt "top"
+        stickyEdges = stickyEdges.filter (edge) -> edge isnt "top" and edge isnt 'center-y'
+      when 'center-x'
+        stickyEdges.push('center-x')
+        stickyEdges = stickyEdges.filter (edge) -> edge isnt "left" and edge isnt "right"
+        centerHorizontaly(currentFrame) if currentFrame?
+      when 'center-y'
+        stickyEdges.push('center-y')
+        stickyEdges = stickyEdges.filter (edge) -> edge isnt "top" and edge isnt "bottom"
+        centerVerticaly(currentFrame) if currentFrame?
 
     stickyEdges
 
 
   cssForFrame = (frame) ->
-    frame = slice frame, stickyEdges.concat(['width', 'height'])
-    for attr in EDGES.concat(['width', 'height'])
-      frame[attr] = if frame[attr]? then frame[attr]+'px' else 'auto'
-    frame
+    css = {}
+    css.width  = if frame.width?  then frame.width  + 'px' else 'auto'
+    css.height = if frame.height? then frame.height + 'px' else 'auto'
+
+    if stickyEdges.indexOf('left') > -1 or stickyEdges.indexOf('center-x') > -1
+      css.left  = frame.left+'px'
+      css.right = 'auto'
+    else if stickyEdges.indexOf('right') > -1
+      css.right = frame.right+'px'
+      css.left  = 'auto'
+
+    if stickyEdges.indexOf('top') > -1 or stickyEdges.indexOf('center-y') > -1
+      css.top    = frame.top+'px'
+      css.bottom = 'auto'
+    else if stickyEdges.indexOf('bottom') > -1
+      css.bottom = frame.bottom+'px'
+      css.top    = 'auto'
+
+    css
 
   getFrameFromDOM = ->
     frame = widget.contentEl().getBoundingClientRect()
     top   : frame.top
-    right : window.innerWidth - frame.right
+    right : window.innerWidth  - frame.right
     bottom: window.innerHeight - frame.bottom
     left  : frame.left
-    width : frame.width  or 'auto'
-    height: frame.height or 'auto'
+    width : frame.width
+    height: frame.height
 
   getFrameFromStorage =  ->
     settings = getLocalSettings()
@@ -94,9 +131,16 @@ module.exports = (widget) ->
     return unless settings and settings.frame?
     localStorage.setItem widget.id, JSON.stringify(settings)
 
-  slice = (object, keys) ->
-    result = {}
-    result[k] = object[k] for k in keys
-    result
+  centerHorizontaly = (frame) ->
+    centerX = window.innerWidth/2
+
+    frame.left  = centerX - frame.width/2
+    frame.right = centerX - frame.width/2
+
+  centerVerticaly = (frame) ->
+    centerY = window.innerHeight/2
+
+    frame.top    = centerY - frame.height/2
+    frame.bottom = centerY - frame.height/2
 
   init()

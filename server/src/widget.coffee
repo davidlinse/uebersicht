@@ -3,6 +3,8 @@ toSource = require('tosource')
 stylus   = require('stylus')
 nib      = require('nib')
 
+WidgetPosition = require './widget_position.coffee'
+
 # This is a wrapper (something like a base class), around the
 # specific implementation of a widget.
 # A widgets mostly lives client side, in the DOM. However, the
@@ -43,6 +45,7 @@ module.exports = (implementation) ->
     contentEl.className = 'widget'
     el.innerHTML = "<style>#{implementation.css}</style>\n"
     el.appendChild(contentEl)
+    api.position = WidgetPosition(api)
     el
 
   api.destroy = ->
@@ -110,6 +113,7 @@ module.exports = (implementation) ->
       .always ->
         return unless started
         timer = setTimeout refresh, api.refreshFrequency
+        api.position.restoreFrame()
 
   parseStyle = (style) ->
     return "" unless style

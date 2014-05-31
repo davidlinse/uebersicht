@@ -1373,7 +1373,7 @@ module.exports = function(someWidgets) {
 
 
 },{}],15:[function(require,module,exports){
-var exec, nib, stylus, toSource;
+var WidgetPosition, exec, nib, stylus, toSource;
 
 exec = require('child_process').exec;
 
@@ -1382,6 +1382,8 @@ toSource = require('tosource');
 stylus = require('stylus');
 
 nib = require('nib');
+
+WidgetPosition = require('./widget_position.coffee');
 
 module.exports = function(implementation) {
   var api, contentEl, defaultStyle, el, init, parseStyle, redraw, refresh, render, renderOutput, rendered, started, timer, update, validate;
@@ -1418,6 +1420,7 @@ module.exports = function(implementation) {
     contentEl.className = 'widget';
     el.innerHTML = "<style>" + implementation.css + "</style>\n";
     el.appendChild(contentEl);
+    api.position = WidgetPosition(api);
     return el;
   };
   api.destroy = function() {
@@ -1513,7 +1516,8 @@ module.exports = function(implementation) {
       if (!started) {
         return;
       }
-      return timer = setTimeout(refresh, api.refreshFrequency);
+      timer = setTimeout(refresh, api.refreshFrequency);
+      return api.position.restoreFrame();
     });
   };
   parseStyle = function(style) {
@@ -1547,7 +1551,7 @@ module.exports = function(implementation) {
 };
 
 
-},{"child_process":false,"nib":false,"stylus":false,"tosource":6}],16:[function(require,module,exports){
+},{"./widget_position.coffee":20,"child_process":false,"nib":false,"stylus":false,"tosource":6}],16:[function(require,module,exports){
 var EdgeGuide, Rect;
 
 Rect = require('./rectangle_math.coffee');
@@ -1563,7 +1567,7 @@ module.exports = function(canvas, actions) {
   guide = EdgeGuide(canvas, 1);
   chromeEl = document.createElement('div');
   chromeEl.className = 'widget-chrome';
-  chromeEl.innerHTML = "<div class='sticky-edge top'></div>\n<div class='sticky-edge right'></div>\n<div class='sticky-edge bottom'></div>\n<div class='sticky-edge left'></div>";
+  chromeEl.innerHTML = "<div class='sticky-edge top'></div>\n<div class='sticky-edge right'></div>\n<div class='sticky-edge bottom'></div>\n<div class='sticky-edge left'></div>\n<div class='sticky-edge center-x'></div>\n<div class='sticky-edge center-y'></div>";
   chromeEl.style.position = 'absolute';
   init = function() {
     chromeEl.addEventListener('click', function(e) {
@@ -1588,17 +1592,17 @@ module.exports = function(canvas, actions) {
     api.hide();
     return api;
   };
-  api.render = function(widgetPosition, options) {
+  api.render = function(widget, options) {
     var edges, el, frame, newFrame, _i, _len, _ref;
     if (options == null) {
       options = {};
     }
     chromeEl.style.display = 'block';
     clearFrame(prevFrame);
-    if (widgetPosition == null) {
+    if ((widget != null ? widget.position : void 0) == null) {
       return;
     }
-    newFrame = widgetPosition.frame();
+    newFrame = widget.position.frame();
     frame = Rect.outset(newFrame, 1.5);
     context.strokeStyle = "#fff";
     context.lineWidth = 1;
@@ -1609,7 +1613,7 @@ module.exports = function(canvas, actions) {
     chromeEl.style.top = frame.top + 'px';
     chromeEl.style.width = frame.width + 'px';
     chromeEl.style.height = frame.height + 'px';
-    edges = widgetPosition.stickyEdges();
+    edges = widget.position.stickyEdges();
     _ref = chromeEl.getElementsByClassName("sticky-edge");
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       el = _ref[_i];
@@ -1620,17 +1624,17 @@ module.exports = function(canvas, actions) {
       }
     }
     if ((options != null ? options.guides : void 0) !== false) {
-      renderGuides(widgetPosition);
+      renderGuides(widget);
     }
     return prevFrame = Rect.clone(newFrame);
   };
-  renderGuides = function(widgetPosition) {
+  renderGuides = function(widget) {
     var edge, edges, _i, _len, _results;
-    edges = widgetPosition.stickyEdges();
+    edges = widget.position.stickyEdges();
     _results = [];
     for (_i = 0, _len = edges.length; _i < _len; _i++) {
       edge = edges[_i];
-      _results.push(guide.render(prevFrame, widgetPosition.frame(), edge));
+      _results.push(guide.render(prevFrame, widget.position.frame(), edge));
     }
     return _results;
   };
@@ -1830,10 +1834,10 @@ exports.loadWidget = loadWidget = function(filePath) {
 },{"coffee-script":false,"fs":false}],20:[function(require,module,exports){
 var EDGES;
 
-EDGES = ['left', 'right', 'top', 'bottom'];
+EDGES = ['left', 'right', 'top', 'bottom', 'center-x', 'center-y'];
 
 module.exports = function(widget) {
-  var api, cssForFrame, currentFrame, getFrameFromDOM, getFrameFromStorage, getLocalSettings, getStickyEdges, init, slice, stickyEdges, storeLocalSettings;
+  var api, centerHorizontaly, centerVerticaly, cssForFrame, currentFrame, getFrameFromDOM, getFrameFromStorage, getLocalSettings, getStickyEdges, init, stickyEdges, storeLocalSettings;
   api = {};
   currentFrame = null;
   stickyEdges = [];
@@ -1856,22 +1860,43 @@ module.exports = function(widget) {
   };
   api.restoreFrame = function() {
     var frame, meassured, _ref;
-    frame = (_ref = getFrameFromStorage()) != null ? _ref : {};
     meassured = getFrameFromDOM();
+    frame = (_ref = getFrameFromStorage()) != null ? _ref : meassured;
+    if (stickyEdges == null) {
+      stickyEdges = getStickyEdges();
+    }
     frame.width = meassured.width;
     frame.height = meassured.height;
+    if (stickyEdges.indexOf('center-x') > -1) {
+      centerHorizontaly(frame);
+    }
+    if (stickyEdges.indexOf('center-y') > -1) {
+      centerVerticaly(frame);
+    }
+    currentFrame = frame;
     if (frame != null) {
       return widget.setFrame(cssForFrame(frame));
     }
   };
   api.update = function(dx, dy) {
+    var centerHorizontal, centerVertical;
     if (currentFrame == null) {
       return;
     }
-    currentFrame.top += dy;
-    currentFrame.bottom -= dy;
-    currentFrame.left += dx;
-    return currentFrame.right -= dx;
+    centerHorizontal = stickyEdges.indexOf('center-x') > -1;
+    centerVertical = stickyEdges.indexOf('center-y') > -1;
+    if (!centerVertical) {
+      currentFrame.top += dy;
+    }
+    if (!centerVertical) {
+      currentFrame.bottom -= dy;
+    }
+    if (!centerHorizontal) {
+      currentFrame.left += dx;
+    }
+    if (!centerHorizontal) {
+      return currentFrame.right -= dx;
+    }
   };
   api.store = function() {
     var settings;
@@ -1891,38 +1916,67 @@ module.exports = function(widget) {
       case 'left':
         stickyEdges.push('left');
         stickyEdges = stickyEdges.filter(function(edge) {
-          return edge !== "right";
+          return edge !== "right" && edge !== 'center-x';
         });
         break;
       case 'right':
         stickyEdges.push('right');
         stickyEdges = stickyEdges.filter(function(edge) {
-          return edge !== "left";
+          return edge !== "left" && edge !== 'center-x';
         });
         break;
       case 'top':
         stickyEdges.push('top');
         stickyEdges = stickyEdges.filter(function(edge) {
-          return edge !== "bottom";
+          return edge !== "bottom" && edge !== 'center-y';
         });
         break;
       case 'bottom':
         stickyEdges.push('bottom');
         stickyEdges = stickyEdges.filter(function(edge) {
-          return edge !== "top";
+          return edge !== "top" && edge !== 'center-y';
         });
+        break;
+      case 'center-x':
+        stickyEdges.push('center-x');
+        stickyEdges = stickyEdges.filter(function(edge) {
+          return edge !== "left" && edge !== "right";
+        });
+        if (currentFrame != null) {
+          centerHorizontaly(currentFrame);
+        }
+        break;
+      case 'center-y':
+        stickyEdges.push('center-y');
+        stickyEdges = stickyEdges.filter(function(edge) {
+          return edge !== "top" && edge !== "bottom";
+        });
+        if (currentFrame != null) {
+          centerVerticaly(currentFrame);
+        }
     }
     return stickyEdges;
   };
   cssForFrame = function(frame) {
-    var attr, _i, _len, _ref;
-    frame = slice(frame, stickyEdges.concat(['width', 'height']));
-    _ref = EDGES.concat(['width', 'height']);
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      attr = _ref[_i];
-      frame[attr] = frame[attr] != null ? frame[attr] + 'px' : 'auto';
+    var css;
+    css = {};
+    css.width = frame.width != null ? frame.width + 'px' : 'auto';
+    css.height = frame.height != null ? frame.height + 'px' : 'auto';
+    if (stickyEdges.indexOf('left') > -1 || stickyEdges.indexOf('center-x') > -1) {
+      css.left = frame.left + 'px';
+      css.right = 'auto';
+    } else if (stickyEdges.indexOf('right') > -1) {
+      css.right = frame.right + 'px';
+      css.left = 'auto';
     }
-    return frame;
+    if (stickyEdges.indexOf('top') > -1 || stickyEdges.indexOf('center-y') > -1) {
+      css.top = frame.top + 'px';
+      css.bottom = 'auto';
+    } else if (stickyEdges.indexOf('bottom') > -1) {
+      css.bottom = frame.bottom + 'px';
+      css.top = 'auto';
+    }
+    return css;
   };
   getFrameFromDOM = function() {
     var frame;
@@ -1932,8 +1986,8 @@ module.exports = function(widget) {
       right: window.innerWidth - frame.right,
       bottom: window.innerHeight - frame.bottom,
       left: frame.left,
-      width: frame.width || 'auto',
-      height: frame.height || 'auto'
+      width: frame.width,
+      height: frame.height
     };
   };
   getFrameFromStorage = function() {
@@ -1957,40 +2011,40 @@ module.exports = function(widget) {
     }
     return localStorage.setItem(widget.id, JSON.stringify(settings));
   };
-  slice = function(object, keys) {
-    var k, result, _i, _len;
-    result = {};
-    for (_i = 0, _len = keys.length; _i < _len; _i++) {
-      k = keys[_i];
-      result[k] = object[k];
-    }
-    return result;
+  centerHorizontaly = function(frame) {
+    var centerX;
+    centerX = window.innerWidth / 2;
+    frame.left = centerX - frame.width / 2;
+    return frame.right = centerX - frame.width / 2;
+  };
+  centerVerticaly = function(frame) {
+    var centerY;
+    centerY = window.innerHeight / 2;
+    frame.top = centerY - frame.height / 2;
+    return frame.bottom = centerY - frame.height / 2;
   };
   return init();
 };
 
 
 },{}],21:[function(require,module,exports){
-var DragHandler, Rect, WidgetPosition, cancelAnimFrame, requestAnimFrame;
+var DragHandler, Rect, cancelAnimFrame, requestAnimFrame;
 
 DragHandler = require('./drag_handler.coffee');
 
 Rect = require('./rectangle_math.coffee');
-
-WidgetPosition = require('./widget_position.coffee');
 
 requestAnimFrame = typeof webkitRequestAnimationFrame !== "undefined" && webkitRequestAnimationFrame !== null ? webkitRequestAnimationFrame : setTimeout;
 
 cancelAnimFrame = typeof webkitCancelAnimationFrame !== "undefined" && webkitCancelAnimationFrame !== null ? webkitCancelAnimationFrame : clearTimeout;
 
 module.exports = function(widgets) {
-  var api, canvas, chrome, context, currentWidget, currentWidgetPosition, deselectWidget, getWidgetAt, guide, init, initCanvas, onMouseDown, renderDrag, selectWidget, setStickyEdge, startPositioning;
+  var api, canvas, chrome, context, currentWidget, deselectWidget, getWidgetAt, guide, init, initCanvas, onMouseDown, renderDrag, selectWidget, setStickyEdge, startPositioning;
   api = {};
   canvas = null;
   context = null;
   chrome = null;
   currentWidget = null;
-  currentWidgetPosition = null;
   guide = null;
   init = function() {
     document.addEventListener('mousedown', onMouseDown);
@@ -2010,11 +2064,6 @@ module.exports = function(widgets) {
       return document.body.removeChild(canvas);
     }
   };
-  api.restorePosition = function(widget) {
-    var widgetPosition;
-    widgetPosition = WidgetPosition(widget);
-    return widgetPosition.restoreFrame();
-  };
   onMouseDown = function(e) {
     var widget;
     if (e.which !== 1) {
@@ -2029,7 +2078,7 @@ module.exports = function(widgets) {
     });
     if (widget != null) {
       selectWidget(widget);
-      return startPositioning(currentWidgetPosition, e);
+      return startPositioning(currentWidget, e);
     } else {
       return deselectWidget();
     }
@@ -2038,9 +2087,8 @@ module.exports = function(widgets) {
     if (widget === currentWidget) {
       return;
     }
-    currentWidgetPosition = WidgetPosition(widget);
     currentWidget = widget;
-    return chrome.render(currentWidgetPosition, {
+    return chrome.render(currentWidget, {
       guides: false
     });
   };
@@ -2049,31 +2097,30 @@ module.exports = function(widgets) {
       return;
     }
     chrome.hide();
-    currentWidget = null;
-    return currentWidgetPosition = null;
+    return currentWidget = null;
   };
-  startPositioning = function(widgetPosition, e) {
+  startPositioning = function(widget, e) {
     var handler, request;
-    handler = DragHandler(e, widgetPosition.domEl());
+    handler = DragHandler(e, widget.contentEl());
     request = null;
     handler.update(function(dx, dy) {
-      widgetPosition.update(dx, dy);
-      return request = requestAnimFrame(renderDrag(widgetPosition));
+      widget.position.update(dx, dy);
+      return request = requestAnimFrame(renderDrag(widget));
     });
     return handler.end(function() {
       cancelAnimFrame(request);
-      widgetPosition.store();
+      widget.position.store();
       return requestAnimFrame(function() {
         return chrome.clearGuides();
       });
     });
   };
-  renderDrag = function(widgetPosition) {
+  renderDrag = function(widget) {
     return function() {
-      if (widgetPosition != null) {
-        widgetPosition.render();
+      if (widget != null) {
+        widget.position.render();
       }
-      return chrome.render(widgetPosition);
+      return chrome.render(widget);
     };
   };
   getWidgetAt = function(point) {
@@ -2100,18 +2147,19 @@ module.exports = function(widgets) {
     return canvas.height = window.innerHeight;
   };
   setStickyEdge = function(newStickyEdge) {
-    if (currentWidgetPosition == null) {
+    if (currentWidget == null) {
       return;
     }
-    currentWidgetPosition.setStickyEdge(newStickyEdge);
-    chrome.render(currentWidgetPosition);
-    return currentWidgetPosition.store();
+    currentWidget.position.setStickyEdge(newStickyEdge);
+    currentWidget.position.render();
+    chrome.render(currentWidget);
+    return currentWidget.position.store();
   };
   return init();
 };
 
 
-},{"./drag_handler.coffee":10,"./rectangle_math.coffee":13,"./widget_chrome.coffee":16,"./widget_position.coffee":20}],22:[function(require,module,exports){
+},{"./drag_handler.coffee":10,"./rectangle_math.coffee":13,"./widget_chrome.coffee":16}],22:[function(require,module,exports){
 var serialize;
 
 serialize = require('./serialize.coffee');

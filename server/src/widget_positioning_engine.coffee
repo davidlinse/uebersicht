@@ -1,7 +1,5 @@
 DragHandler    = require './drag_handler.coffee'
 Rect           = require './rectangle_math.coffee'
-WidgetPosition = require './widget_position.coffee'
-
 
 requestAnimFrame = webkitRequestAnimationFrame ? setTimeout
 cancelAnimFrame  = webkitCancelAnimationFrame  ? clearTimeout
@@ -12,9 +10,8 @@ module.exports = (widgets) ->
   context = null
   chrome  = null
 
-  currentWidget         = null
-  currentWidgetPosition = null
-  guide    = null
+  currentWidget = null
+  guide         = null
 
   init = ->
     document.addEventListener 'mousedown', onMouseDown
@@ -34,10 +31,6 @@ module.exports = (widgets) ->
     document.removeEventListener 'mousedown', onMouseDown
     document.body.removeChild canvas if canvas.parentElement?
 
-  api.restorePosition = (widget) ->
-    widgetPosition = WidgetPosition widget
-    widgetPosition.restoreFrame()
-
   onMouseDown = (e) ->
     return true unless e.which == 1
     return true if chrome.domEl().contains(e.target)
@@ -45,40 +38,38 @@ module.exports = (widgets) ->
 
     if widget?
       selectWidget(widget)
-      startPositioning currentWidgetPosition, e
+      startPositioning currentWidget, e
     else
       deselectWidget()
 
   selectWidget = (widget) ->
     return if widget == currentWidget
-    currentWidgetPosition = WidgetPosition(widget)
-    currentWidget         = widget
+    currentWidget = widget
 
-    chrome.render(currentWidgetPosition, guides: false)
+    chrome.render(currentWidget, guides: false)
 
   deselectWidget = ->
     return unless currentWidget
 
     chrome.hide()
     currentWidget = null
-    currentWidgetPosition = null
 
-  startPositioning = (widgetPosition, e) ->
-    handler   = DragHandler(e, widgetPosition.domEl())
+  startPositioning = (widget, e) ->
+    handler   = DragHandler(e, widget.contentEl())
     request   = null
 
     handler.update (dx, dy) ->
-      widgetPosition.update dx, dy
-      request = requestAnimFrame renderDrag(widgetPosition)
+      widget.position.update dx, dy
+      request = requestAnimFrame renderDrag(widget)
 
     handler.end ->
       cancelAnimFrame request
-      widgetPosition.store()
+      widget.position.store()
       requestAnimFrame -> chrome.clearGuides()
 
-  renderDrag = (widgetPosition) -> ->
-    widgetPosition?.render()
-    chrome.render widgetPosition
+  renderDrag = (widget) -> ->
+    widget?.position.render()
+    chrome.render widget
 
   getWidgetAt = (point) ->
     foundEl = {}
@@ -98,11 +89,12 @@ module.exports = (widgets) ->
     canvas.height = window.innerHeight
 
   setStickyEdge = (newStickyEdge) ->
-    return unless currentWidgetPosition?
+    return unless currentWidget?
 
-    currentWidgetPosition.setStickyEdge(newStickyEdge)
-    chrome.render currentWidgetPosition
-    currentWidgetPosition.store()
+    currentWidget.position.setStickyEdge(newStickyEdge)
+    currentWidget.position.render()
+    chrome.render currentWidget
+    currentWidget.position.store()
 
 
   init()
