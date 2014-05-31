@@ -43,17 +43,26 @@ module.exports = (widgets) ->
   onMouseDown = (e) ->
     return unless e.which == 1
     widget = getWidgetAt(left: e.clientX, top: e.clientY)
-    return unless widget?
-    selectWidget(widget)
-    startPositioning currentWidgetPosition, e
+
+    if widget?
+      selectWidget(widget)
+      startPositioning currentWidgetPosition, e
+    else
+      deselectWidget()
 
   selectWidget = (widget) ->
-    prevFrame             = currentWidgetPosition?.frame()
     currentWidgetPosition = WidgetPosition(widget)
     currentWidget         = widget
 
-    chrome.render(prevFrame, currentWidgetPosition)
+    chrome.render(currentWidgetPosition)
     currentWidgetPosition
+
+  deselectWidget = ->
+    return unless currentWidget
+
+    chrome.hide()
+    currentWidget = null
+    currentWidgetPosition = null
 
   startPositioning = (widgetPosition, e) ->
     prevFrame = null
@@ -76,7 +85,7 @@ module.exports = (widgets) ->
   renderDrag = (widgetPosition, prevFrame) -> ->
     widgetPosition?.render()
     renderGuides widgetPosition, prevFrame
-    chrome.render prevFrame, widgetPosition
+    chrome.render widgetPosition
 
   renderGuides = (widgetPosition, prevFrame) ->
     edges = widgetPosition.stickyEdges()
@@ -108,7 +117,7 @@ module.exports = (widgets) ->
 
     currentWidgetPosition.setStickyEdge(newStickyEdge)
 
-    chrome.render null, currentWidgetPosition
+    chrome.render currentWidgetPosition
     currentWidgetPosition.store()
 
 

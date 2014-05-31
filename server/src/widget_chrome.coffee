@@ -2,8 +2,9 @@ Rect = require './rectangle_math.coffee'
 module.exports = (canvas, actions) ->
   api  = {}
 
-  context = canvas.getContext('2d')
-  draw    = require('./draw.coffee')(context)
+  context   = canvas.getContext('2d')
+  draw      = require('./draw.coffee')(context)
+  prevFrame = null
 
   chromeEl = document.createElement('div')
   chromeEl.className = 'widget-chrome'
@@ -24,24 +25,24 @@ module.exports = (canvas, actions) ->
         continue if className == 'sticky-edge'
         actions.clickedStickyEdgeToggle className
 
+
+    api.hide()
     api
 
-  api.render = (prevFrame, widgetPosition) ->
-    draw.clearFrame Rect.outset(prevFrame, 4) if prevFrame?
+  api.render = (widgetPosition) ->
+    chromeEl.style.display = 'block'
+    clearFrame prevFrame
     return unless widgetPosition?
 
-    frame = Rect.outset(widgetPosition.frame(), 1.5)
+    newFrame = widgetPosition.frame()
+
+    frame = Rect.outset(newFrame, 1.5)
     context.strokeStyle = "#fff"
     context.lineWidth   = 1
     draw.strokeFrame frame
+    cutoutToggles frame,  20
 
-    toggleSize = 20
-    context.clearRect frame.left+frame.width/2 - toggleSize/2, frame.top - toggleSize/2, toggleSize, toggleSize
-    context.clearRect frame.left+frame.width/2 - toggleSize/2, frame.top + frame.height - toggleSize/2, toggleSize, toggleSize
-    context.clearRect frame.left - toggleSize/2, frame.top + frame.height/2 - toggleSize/2, toggleSize, toggleSize
-    context.clearRect frame.left + frame.width - toggleSize/2, frame.top + frame.height/2 - toggleSize/2, toggleSize, toggleSize
-
-    frame = Rect.outset(widgetPosition.frame(), 2)
+    frame = Rect.outset(newFrame, 2)
     chromeEl.style.left   = frame.left + 'px'
     chromeEl.style.top    = frame.top  + 'px'
     chromeEl.style.width  = frame.width  + 'px'
@@ -54,7 +55,23 @@ module.exports = (canvas, actions) ->
       else
         el.classList.remove 'active'
 
+
+    prevFrame = Rect.clone(newFrame)
+
+  cutoutToggles = (frame, toggleSize) ->
+    context.clearRect frame.left+frame.width/2 - toggleSize/2, frame.top - toggleSize/2, toggleSize, toggleSize
+    context.clearRect frame.left+frame.width/2 - toggleSize/2, frame.top + frame.height - toggleSize/2, toggleSize, toggleSize
+    context.clearRect frame.left - toggleSize/2, frame.top + frame.height/2 - toggleSize/2, toggleSize, toggleSize
+    context.clearRect frame.left + frame.width - toggleSize/2, frame.top + frame.height/2 - toggleSize/2, toggleSize, toggleSize
+
   api.domEl = ->
     chromeEl
+
+  api.hide = ->
+    clearFrame prevFrame
+    chromeEl.style.display = 'none'
+
+  clearFrame = (frame) ->
+    draw.clearFrame Rect.outset(frame, 5) if frame?
 
   init()

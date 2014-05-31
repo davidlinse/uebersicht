@@ -905,6 +905,16 @@ exports.pointInRect = function(point, rect) {
   return point.left >= rect.left && point.top >= rect.top && point.left <= rect.left + rect.width && point.top <= rect.top + rect.height;
 };
 
+exports.clone = function(rect) {
+  var clone, k, v;
+  clone = {};
+  for (k in rect) {
+    v = rect[k];
+    clone[k] = v;
+  }
+  return clone;
+};
+
 
 },{}],13:[function(require,module,exports){
 var exec, nib, stylus, toSource;
@@ -1087,10 +1097,11 @@ var Rect;
 Rect = require('./rectangle_math.coffee');
 
 module.exports = function(canvas, actions) {
-  var api, chromeEl, context, draw, init;
+  var api, chromeEl, clearFrame, context, cutoutToggles, draw, init, prevFrame;
   api = {};
   context = canvas.getContext('2d');
   draw = require('./draw.coffee')(context);
+  prevFrame = null;
   chromeEl = document.createElement('div');
   chromeEl.className = 'widget-chrome';
   chromeEl.innerHTML = "<div class='sticky-edge top'></div>\n<div class='sticky-edge right'></div>\n<div class='sticky-edge bottom'></div>\n<div class='sticky-edge left'></div>";
@@ -1113,45 +1124,56 @@ module.exports = function(canvas, actions) {
       }
       return _results;
     });
+    api.hide();
     return api;
   };
-  api.render = function(prevFrame, widgetPosition) {
-    var edges, el, frame, toggleSize, _i, _len, _ref, _results;
-    if (prevFrame != null) {
-      draw.clearFrame(Rect.outset(prevFrame, 4));
-    }
+  api.render = function(widgetPosition) {
+    var edges, el, frame, newFrame, _i, _len, _ref;
+    chromeEl.style.display = 'block';
+    clearFrame(prevFrame);
     if (widgetPosition == null) {
       return;
     }
-    frame = Rect.outset(widgetPosition.frame(), 1.5);
+    newFrame = widgetPosition.frame();
+    frame = Rect.outset(newFrame, 1.5);
     context.strokeStyle = "#fff";
     context.lineWidth = 1;
     draw.strokeFrame(frame);
-    toggleSize = 20;
-    context.clearRect(frame.left + frame.width / 2 - toggleSize / 2, frame.top - toggleSize / 2, toggleSize, toggleSize);
-    context.clearRect(frame.left + frame.width / 2 - toggleSize / 2, frame.top + frame.height - toggleSize / 2, toggleSize, toggleSize);
-    context.clearRect(frame.left - toggleSize / 2, frame.top + frame.height / 2 - toggleSize / 2, toggleSize, toggleSize);
-    context.clearRect(frame.left + frame.width - toggleSize / 2, frame.top + frame.height / 2 - toggleSize / 2, toggleSize, toggleSize);
-    frame = Rect.outset(widgetPosition.frame(), 2);
+    cutoutToggles(frame, 20);
+    frame = Rect.outset(newFrame, 2);
     chromeEl.style.left = frame.left + 'px';
     chromeEl.style.top = frame.top + 'px';
     chromeEl.style.width = frame.width + 'px';
     chromeEl.style.height = frame.height + 'px';
     edges = widgetPosition.stickyEdges();
     _ref = chromeEl.getElementsByClassName("sticky-edge");
-    _results = [];
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       el = _ref[_i];
       if (el.classList.contains(edges[0]) || el.classList.contains(edges[1])) {
-        _results.push(el.classList.add('active'));
+        el.classList.add('active');
       } else {
-        _results.push(el.classList.remove('active'));
+        el.classList.remove('active');
       }
     }
-    return _results;
+    return prevFrame = Rect.clone(newFrame);
+  };
+  cutoutToggles = function(frame, toggleSize) {
+    context.clearRect(frame.left + frame.width / 2 - toggleSize / 2, frame.top - toggleSize / 2, toggleSize, toggleSize);
+    context.clearRect(frame.left + frame.width / 2 - toggleSize / 2, frame.top + frame.height - toggleSize / 2, toggleSize, toggleSize);
+    context.clearRect(frame.left - toggleSize / 2, frame.top + frame.height / 2 - toggleSize / 2, toggleSize, toggleSize);
+    return context.clearRect(frame.left + frame.width - toggleSize / 2, frame.top + frame.height / 2 - toggleSize / 2, toggleSize, toggleSize);
   };
   api.domEl = function() {
     return chromeEl;
+  };
+  api.hide = function() {
+    clearFrame(prevFrame);
+    return chromeEl.style.display = 'none';
+  };
+  clearFrame = function(frame) {
+    if (frame != null) {
+      return draw.clearFrame(Rect.outset(frame, 5));
+    }
   };
   return init();
 };
@@ -1313,7 +1335,7 @@ requestAnimFrame = typeof webkitRequestAnimationFrame !== "undefined" && webkitR
 cancelAnimFrame = typeof webkitCancelAnimationFrame !== "undefined" && webkitCancelAnimationFrame !== null ? webkitCancelAnimationFrame : clearTimeout;
 
 module.exports = function(widgets) {
-  var api, canvas, chrome, chromeEl, context, currentWidget, currentWidgetPosition, getWidgetAt, guide, init, initCanvas, onMouseDown, renderDrag, renderGuides, selectWidget, setStickyEdge, startPositioning;
+  var api, canvas, chrome, chromeEl, context, currentWidget, currentWidgetPosition, deselectWidget, getWidgetAt, guide, init, initCanvas, onMouseDown, renderDrag, renderGuides, selectWidget, setStickyEdge, startPositioning;
   api = {};
   canvas = null;
   context = null;
@@ -1355,19 +1377,26 @@ module.exports = function(widgets) {
       left: e.clientX,
       top: e.clientY
     });
-    if (widget == null) {
-      return;
+    if (widget != null) {
+      selectWidget(widget);
+      return startPositioning(currentWidgetPosition, e);
+    } else {
+      return deselectWidget();
     }
-    selectWidget(widget);
-    return startPositioning(currentWidgetPosition, e);
   };
   selectWidget = function(widget) {
-    var prevFrame;
-    prevFrame = currentWidgetPosition != null ? currentWidgetPosition.frame() : void 0;
     currentWidgetPosition = WidgetPosition(widget);
     currentWidget = widget;
-    chrome.render(prevFrame, currentWidgetPosition);
+    chrome.render(currentWidgetPosition);
     return currentWidgetPosition;
+  };
+  deselectWidget = function() {
+    if (!currentWidget) {
+      return;
+    }
+    chrome.hide();
+    currentWidget = null;
+    return currentWidgetPosition = null;
   };
   startPositioning = function(widgetPosition, e) {
     var handler, prevFrame, request;
@@ -1406,7 +1435,7 @@ module.exports = function(widgets) {
         widgetPosition.render();
       }
       renderGuides(widgetPosition, prevFrame);
-      return chrome.render(prevFrame, widgetPosition);
+      return chrome.render(widgetPosition);
     };
   };
   renderGuides = function(widgetPosition, prevFrame) {
@@ -1453,7 +1482,7 @@ module.exports = function(widgets) {
       guide.clear(currentWidgetPosition.frame(), edge);
     }
     currentWidgetPosition.setStickyEdge(newStickyEdge);
-    chrome.render(null, currentWidgetPosition);
+    chrome.render(currentWidgetPosition);
     return currentWidgetPosition.store();
   };
   return init();
