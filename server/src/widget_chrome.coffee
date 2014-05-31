@@ -1,10 +1,14 @@
-Rect = require './rectangle_math.coffee'
+Rect      = require './rectangle_math.coffee'
+EdgeGuide = require './edge_guide.coffee'
+
 module.exports = (canvas, actions) ->
   api  = {}
 
   context   = canvas.getContext('2d')
   draw      = require('./draw.coffee')(context)
   prevFrame = null
+
+  guide     = EdgeGuide(canvas, 1)
 
   chromeEl = document.createElement('div')
   chromeEl.className = 'widget-chrome'
@@ -55,8 +59,19 @@ module.exports = (canvas, actions) ->
       else
         el.classList.remove 'active'
 
+    renderGuides(widgetPosition)
 
     prevFrame = Rect.clone(newFrame)
+
+  renderGuides = (widgetPosition) ->
+    edges = widgetPosition.stickyEdges()
+    for edge in edges
+      guide.render prevFrame, widgetPosition.frame(), edge
+
+  api.clearGuides = ->
+    return unless prevFrame?
+    for edge in ['top', 'right', 'bottom', 'left']
+      guide.render prevFrame, {}, edge
 
   cutoutToggles = (frame, toggleSize) ->
     context.clearRect frame.left+frame.width/2 - toggleSize/2, frame.top - toggleSize/2, toggleSize, toggleSize

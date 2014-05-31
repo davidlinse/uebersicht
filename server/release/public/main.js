@@ -586,16 +586,19 @@ module.exports = function(implementation) {
 
 
 },{"child_process":2,"nib":2,"stylus":2,"tosource":3}],12:[function(require,module,exports){
-var Rect;
+var EdgeGuide, Rect;
 
 Rect = require('./rectangle_math.coffee');
 
+EdgeGuide = require('./edge_guide.coffee');
+
 module.exports = function(canvas, actions) {
-  var api, chromeEl, clearFrame, context, cutoutToggles, draw, init, prevFrame;
+  var api, chromeEl, clearFrame, context, cutoutToggles, draw, guide, init, prevFrame, renderGuides;
   api = {};
   context = canvas.getContext('2d');
   draw = require('./draw.coffee')(context);
   prevFrame = null;
+  guide = EdgeGuide(canvas, 1);
   chromeEl = document.createElement('div');
   chromeEl.className = 'widget-chrome';
   chromeEl.innerHTML = "<div class='sticky-edge top'></div>\n<div class='sticky-edge right'></div>\n<div class='sticky-edge bottom'></div>\n<div class='sticky-edge left'></div>";
@@ -649,7 +652,31 @@ module.exports = function(canvas, actions) {
         el.classList.remove('active');
       }
     }
+    renderGuides(widgetPosition);
     return prevFrame = Rect.clone(newFrame);
+  };
+  renderGuides = function(widgetPosition) {
+    var edge, edges, _i, _len, _results;
+    edges = widgetPosition.stickyEdges();
+    _results = [];
+    for (_i = 0, _len = edges.length; _i < _len; _i++) {
+      edge = edges[_i];
+      _results.push(guide.render(prevFrame, widgetPosition.frame(), edge));
+    }
+    return _results;
+  };
+  api.clearGuides = function() {
+    var edge, _i, _len, _ref, _results;
+    if (prevFrame == null) {
+      return;
+    }
+    _ref = ['top', 'right', 'bottom', 'left'];
+    _results = [];
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      edge = _ref[_i];
+      _results.push(guide.render(prevFrame, {}, edge));
+    }
+    return _results;
   };
   cutoutToggles = function(frame, toggleSize) {
     context.clearRect(frame.left + frame.width / 2 - toggleSize / 2, frame.top - toggleSize / 2, toggleSize, toggleSize);
@@ -673,7 +700,7 @@ module.exports = function(canvas, actions) {
 };
 
 
-},{"./draw.coffee":7,"./rectangle_math.coffee":9}],13:[function(require,module,exports){
+},{"./draw.coffee":7,"./edge_guide.coffee":8,"./rectangle_math.coffee":9}],13:[function(require,module,exports){
 module.exports = function(widgetDir) {
   return function(req, res, next) {
     var parts, widget;
@@ -970,7 +997,7 @@ module.exports = function(widget) {
 
 
 },{}],17:[function(require,module,exports){
-var DragHandler, EdgeGuide, Rect, WidgetPosition, cancelAnimFrame, requestAnimFrame;
+var DragHandler, Rect, WidgetPosition, cancelAnimFrame, requestAnimFrame;
 
 DragHandler = require('./drag_handler.coffee');
 
@@ -978,14 +1005,12 @@ Rect = require('./rectangle_math.coffee');
 
 WidgetPosition = require('./widget_position.coffee');
 
-EdgeGuide = require('./edge_guide.coffee');
-
 requestAnimFrame = typeof webkitRequestAnimationFrame !== "undefined" && webkitRequestAnimationFrame !== null ? webkitRequestAnimationFrame : setTimeout;
 
 cancelAnimFrame = typeof webkitCancelAnimationFrame !== "undefined" && webkitCancelAnimationFrame !== null ? webkitCancelAnimationFrame : clearTimeout;
 
 module.exports = function(widgets) {
-  var api, canvas, chrome, chromeEl, context, currentWidget, currentWidgetPosition, deselectWidget, getWidgetAt, guide, init, initCanvas, onMouseDown, renderDrag, renderGuides, selectWidget, setStickyEdge, startPositioning;
+  var api, canvas, chrome, chromeEl, context, currentWidget, currentWidgetPosition, deselectWidget, getWidgetAt, guide, init, initCanvas, onMouseDown, renderDrag, selectWidget, setStickyEdge, startPositioning;
   api = {};
   canvas = null;
   context = null;
@@ -1000,7 +1025,6 @@ module.exports = function(widgets) {
     context = canvas.getContext("2d");
     document.body.insertBefore(canvas, document.body.firstChild);
     initCanvas();
-    guide = EdgeGuide(canvas, 1);
     chrome = require('./widget_chrome.coffee')(canvas, {
       clickedStickyEdgeToggle: setStickyEdge
     });
@@ -1049,54 +1073,26 @@ module.exports = function(widgets) {
     return currentWidgetPosition = null;
   };
   startPositioning = function(widgetPosition, e) {
-    var handler, prevFrame, request;
-    prevFrame = null;
+    var handler, request;
     handler = DragHandler(e, widgetPosition.domEl());
     request = null;
     handler.update(function(dx, dy) {
-      var k, v, _ref, _results;
       widgetPosition.update(dx, dy);
-      request = requestAnimFrame(renderDrag(widgetPosition, prevFrame));
-      prevFrame = {};
-      _ref = widgetPosition.frame();
-      _results = [];
-      for (k in _ref) {
-        v = _ref[k];
-        _results.push(prevFrame[k] = v);
-      }
-      return _results;
+      return request = requestAnimFrame(renderDrag(widgetPosition));
     });
     return handler.end(function() {
-      var edge, _i, _len, _ref, _results;
       cancelAnimFrame(request);
       widgetPosition.store();
-      _ref = ['top', 'right', 'bottom', 'left'];
-      _results = [];
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        edge = _ref[_i];
-        _results.push(guide.render(prevFrame, {}, edge));
-      }
-      return _results;
+      return chrome.clearGuides();
     });
   };
-  renderDrag = function(widgetPosition, prevFrame) {
+  renderDrag = function(widgetPosition) {
     return function() {
       if (widgetPosition != null) {
         widgetPosition.render();
       }
-      renderGuides(widgetPosition, prevFrame);
       return chrome.render(widgetPosition);
     };
-  };
-  renderGuides = function(widgetPosition, prevFrame) {
-    var edge, edges, _i, _len, _results;
-    edges = widgetPosition.stickyEdges();
-    _results = [];
-    for (_i = 0, _len = edges.length; _i < _len; _i++) {
-      edge = edges[_i];
-      _results.push(guide.render(prevFrame, widgetPosition.frame(), edge));
-    }
-    return _results;
   };
   getWidgetAt = function(point) {
     var foundEl, widgetEl, _i, _len, _ref;
@@ -1139,7 +1135,7 @@ module.exports = function(widgets) {
 };
 
 
-},{"./drag_handler.coffee":6,"./edge_guide.coffee":8,"./rectangle_math.coffee":9,"./widget_chrome.coffee":12,"./widget_position.coffee":16}],18:[function(require,module,exports){
+},{"./drag_handler.coffee":6,"./rectangle_math.coffee":9,"./widget_chrome.coffee":12,"./widget_position.coffee":16}],18:[function(require,module,exports){
 var serialize;
 
 serialize = require('./serialize.coffee');

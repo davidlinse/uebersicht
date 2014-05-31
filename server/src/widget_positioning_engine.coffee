@@ -1,7 +1,7 @@
 DragHandler    = require './drag_handler.coffee'
 Rect           = require './rectangle_math.coffee'
 WidgetPosition = require './widget_position.coffee'
-EdgeGuide      = require './edge_guide.coffee'
+
 
 requestAnimFrame = webkitRequestAnimationFrame ? setTimeout
 cancelAnimFrame  = webkitCancelAnimationFrame  ? clearTimeout
@@ -24,7 +24,6 @@ module.exports = (widgets) ->
     document.body.insertBefore(canvas, document.body.firstChild)
     initCanvas()
 
-    guide  = EdgeGuide(canvas, 1)
     chrome = require('./widget_chrome.coffee') canvas,
       clickedStickyEdgeToggle: setStickyEdge
 
@@ -65,32 +64,21 @@ module.exports = (widgets) ->
     currentWidgetPosition = null
 
   startPositioning = (widgetPosition, e) ->
-    prevFrame = null
     handler   = DragHandler(e, widgetPosition.domEl())
     request   = null
 
     handler.update (dx, dy) ->
       widgetPosition.update dx, dy
-      request   = requestAnimFrame renderDrag(widgetPosition, prevFrame)
-      prevFrame = {}
-      prevFrame[k] = v for k, v of widgetPosition.frame()
+      request = requestAnimFrame renderDrag(widgetPosition)
 
     handler.end ->
       cancelAnimFrame request
       widgetPosition.store()
-      for edge in ['top', 'right', 'bottom', 'left']
-        guide.render prevFrame, {}, edge # this clears the guides
+      chrome.clearGuides()
 
-
-  renderDrag = (widgetPosition, prevFrame) -> ->
+  renderDrag = (widgetPosition) -> ->
     widgetPosition?.render()
-    renderGuides widgetPosition, prevFrame
     chrome.render widgetPosition
-
-  renderGuides = (widgetPosition, prevFrame) ->
-    edges = widgetPosition.stickyEdges()
-    for edge in edges
-      guide.render prevFrame, widgetPosition.frame(), edge
 
   getWidgetAt = (point) ->
     foundEl = {}
