@@ -152,7 +152,7 @@ A global object called `uebersicht` exists which exposes extra functionality tha
 ### uebersicht.makeBgSlice(canvas)
 
 Can be called with a canvas element to render a slice of the desktop wallpaper. This can be used to create filter effects, like blur, with the background. The dimensions of the slice are determined by the size and position of the canvas element. They are chosen so that they match exactly what would be directly underneath the canvas element. This means, it is important that the canvas element is correctly positioned before this method is called.
-Calling `makeBgSlice` is like registering an event handler. The background slice will get re-rendered every time the wallpaper changes, so there is no need to call this method repeatedly. In fact, just like an event handler, you should not call this method repeatedly on the same DOM element. For this reason `afterReander` is usually the best place to call this method from.
+Calling `makeBgSlice` is like registering an event handler. The background slice will get re-rendered every time the wallpaper changes, so there is no need to call this method repeatedly. In fact, just like an event handler, you should not call this method repeatedly on the same DOM element. For this reason `afterRender` is usually the best place to call this method from.
 
 
 ## Building Übersicht
